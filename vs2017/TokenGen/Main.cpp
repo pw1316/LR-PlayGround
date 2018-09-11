@@ -31,6 +31,20 @@ inline void AbsorbWhiteSpace(std::istream& is)
     }
 }
 
+static void Include(std::ostream& os, const std::string& name)
+{
+    os << "#include <" << name << ">\n";
+}
+
+static void InlineComment(std::ostream& os, const std::string& name)
+{
+    for (int i = 0; i < indent; ++i)
+    {
+        os << " ";
+    }
+    os << "/* " << name << " */\n";
+}
+
 static void BeginScope(std::ostream& os)
 {
     os << std::setw(indent + 2) << "{\n";
@@ -89,7 +103,8 @@ int main(int argc, char* argv[])
     std::set<std::string> nonterminals;
     std::vector<std::vector<std::string>> grammar;
 
-    int lineNo = 0;
+    int lineNo = 1;
+    std::stringstream ss;
     std::string line;
     bool isToken = true;
     bool hasEmpty = false;
@@ -111,14 +126,18 @@ int main(int argc, char* argv[])
         /* Token */
         else if (isToken)
         {
-            std::stringstream ss;
+            ss = std::stringstream();
             std::string token;
             std::string regex;
             ss << line;
             ss >> token;
             AbsorbWhiteSpace(ss);
             std::getline(ss, regex);
-            if (terminals.find(token) != terminals.end())
+            if (regex.empty())
+            {
+                std::cout << std::setw(6) << lineNo << "[WARN] Terminal cannot be empty. Ignore this line\n";
+            }
+            else if (terminals.find(token) != terminals.end())
             {
                 std::cout << std::setw(6) << lineNo << "[WARN] Duplication found. Ignore this line\n";
             }
@@ -131,7 +150,7 @@ int main(int argc, char* argv[])
         /* Grammar */
         else
         {
-            std::stringstream ss;
+            ss = std::stringstream();
             std::string token;
             std::vector<std::string> g;
             ss << line;
@@ -141,11 +160,12 @@ int main(int argc, char* argv[])
                 if (isLeft && (terminals.find(token) != terminals.end() || token == "@"))
                 {
                     std::cout << std::setw(6) << lineNo << "[WARN] The symbol on the left side is a terminal(or epsilon). Ignore this grammar\n";
+                    break;
                 }
                 else if (token == "@")
                 {
                     hasEmpty = true;
-                    g.push_back("");
+                    g.push_back(token);
                 }
                 else
                 {
@@ -166,17 +186,17 @@ int main(int argc, char* argv[])
     }
 
     std::ofstream fout("Token.hpp");
-    fout << "#pragma once\n";
+    BeginCustomLine(fout, "#pragma once");
+    Include(fout, "string");
+    Include(fout, "vector");
 
     BeginNamespace(fout, "LR::Token");
+
+    BeginCustomLine(fout, "constexpr auto HAS_EMPTY = true;");
 
     BeginCustomLine(fout, "enum class SymbolType");
     BeginStructure(fout);
     BeginCustomLine(fout, "NONE,");
-    if (hasEmpty)
-    {
-        BeginCustomLine(fout, "EPSILON,");
-    }
     for (auto terminal : terminals)
     {
         std::string s("TERM_");
@@ -188,7 +208,12 @@ int main(int argc, char* argv[])
         BeginCustomLine(fout, s + nonterminal + ",");
     }
     BeginCustomLine(fout, "START,");
-    BeginCustomLine(fout, "TERMINAL");
+    BeginCustomLine(fout, "TERMINAL,");
+    if (hasEmpty)
+    {
+        BeginCustomLine(fout, "EPSILON,");
+    }
+    BeginCustomLine(fout, "TOTAL");
     EndStructure(fout);
 
     BeginCustomLine(fout, "enum class ElementType");
@@ -212,7 +237,6 @@ int main(int argc, char* argv[])
     BeginStructure(fout);
     BeginCustomLine(fout, "ElementHeader header;");
     BeginCustomLine(fout, "SymbolType type;");
-    BeginCustomLine(fout, "int value;");
     EndStructure(fout);
 
     BeginCustomLine(fout, "union Element");
@@ -220,6 +244,63 @@ int main(int argc, char* argv[])
     BeginCustomLine(fout, "ElementHeader header;");
     BeginCustomLine(fout, "ElementState state;");
     BeginCustomLine(fout, "ElementSymbol symbol;");
+    EndStructure(fout);
+
+    /* Token Table */
+    InlineComment(fout, "Offset Is 1 Because NONE");
+    BeginCustomLine(fout, "const std::vector<std::string> TOKEN_VALUE =");
+    BeginStructure(fout);
+    for (auto& token : terminals)
+    {
+        ss = std::stringstream();
+        ss << "\"";
+        for (auto c : terminal2regex[token])
+        {
+            if (c == '\\')
+            {
+                ss << c;
+            }
+            else if (c == '"')
+            {
+                ss << '\\';
+            }
+            ss << c;
+        }
+        ss << "\",";
+        std::string s;
+        std::getline(ss, s);
+        BeginCustomLine(fout, s);
+    }
+    EndStructure(fout);
+
+    /* Grammar Table */
+    BeginCustomLine(fout, "const std::vector<std::vector<SymbolType>> GRAMMAR_TABLE =");
+    BeginStructure(fout);
+    for (auto& g : grammar)
+    {
+        ss = std::stringstream();
+        ss << "{ ";
+        for (auto& s : g)
+        {
+            if (terminals.find(s) != terminals.end())
+            {
+                ss << "SymbolType::TERM_" << s;
+            }
+            else if (nonterminals.find(s) != nonterminals.end())
+            {
+                ss << "SymbolType::SYMB_" << s;
+            }
+            else if (s == "@")
+            {
+                ss << "SymbolType::EPSILON";
+            }
+            ss << ", ";
+        }
+        ss << "},";
+        std::string s;
+        std::getline(ss, s);
+        BeginCustomLine(fout, s);
+    }
     EndStructure(fout);
 
     EndNamespace(fout);
