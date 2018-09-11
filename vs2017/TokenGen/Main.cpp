@@ -192,7 +192,14 @@ int main(int argc, char* argv[])
 
     BeginNamespace(fout, "LR::Token");
 
-    BeginCustomLine(fout, "constexpr auto HAS_EMPTY = true;");
+    if (hasEmpty)
+    {
+        BeginCustomLine(fout, "constexpr auto HAS_EMPTY = true;");
+    }
+    else
+    {
+        BeginCustomLine(fout, "constexpr auto HAS_EMPTY = false;");
+    }
 
     BeginCustomLine(fout, "enum class SymbolType");
     BeginStructure(fout);
