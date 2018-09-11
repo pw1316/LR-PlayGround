@@ -7,13 +7,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Lexer.hpp" />
-    <ClInclude Include="Token.hpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="Main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="token.txt" />
   </ItemGroup>
 </Project>

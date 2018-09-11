@@ -12,8 +12,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{E26FCA6B-90F7-4ADC-B52E-36C2DC301FAB}</ProjectGuid>
-    <RootNamespace>LR1Parser</RootNamespace>
+    <ProjectGuid>{686B24A4-60D2-48AD-B316-CEEE37D42548}</ProjectGuid>
+    <RootNamespace>TokenGen</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -44,6 +44,7 @@
     <Import Project="..\Build.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -51,11 +52,9 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
-    <CustomBuildStep>
-      <Command>TokenGen.exe token.txt</Command>
-      <Inputs>TokenGen.exe;token.txt;%(Inputs)</Inputs>
-      <Outputs>Token.hpp;%(Outputs)</Outputs>
-    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy $(OutDir)$(TargetName).exe $(SolutionDir)LR1Parser</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -70,26 +69,12 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <CustomBuildStep>
-      <Command>TokenGen.exe token.txt</Command>
-      <Inputs>TokenGen.exe;token.txt;%(Inputs)</Inputs>
-      <Outputs>Token.hpp;%(Outputs)</Outputs>
-    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy $(OutDir)$(TargetName).exe $(SolutionDir)LR1Parser</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Lexer.hpp" />
-    <ClInclude Include="Token.hpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="Main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TokenGen\TokenGen.vcxproj">
-      <Project>{686b24a4-60d2-48ad-b316-ceee37d42548}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="token.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
