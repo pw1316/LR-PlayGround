@@ -12,9 +12,9 @@ namespace LR::Lexer
     class Lexer
     {
     public:
-        static std::queue<Grammar::ElementToken> Lex(const Grammar::Grammar& g, const std::string input)
+        static std::queue<unsigned int> Lex(const Grammar::Grammar& g, const std::string input)
         {
-            std::queue<Grammar::ElementToken> ret;
+            std::queue<unsigned int> ret;
             auto iter = input.begin();
             while (iter != input.end())
             {
@@ -24,10 +24,7 @@ namespace LR::Lexer
                     std::smatch ms;
                     if (std::regex_search(iter, input.end(), ms, std::regex(g.TerminalTokenValues()[i]), std::regex_constants::match_continuous))
                     {
-                        Grammar::ElementToken token;
-                        token.header.type = Grammar::ElementType::Token;
-                        token.tokenId = static_cast<unsigned int>(i);
-                        ret.push(token);
+                        ret.push(static_cast<unsigned int>(i));
                         iter += ms[0].length();
                         break;
                     }
@@ -35,7 +32,7 @@ namespace LR::Lexer
                 /* Failed */
                 if (i == g.TerminalTokenValues().size())
                 {
-                    return std::queue<Grammar::ElementToken>();
+                    return std::queue<unsigned int>();
                 }
             }
             return ret;

@@ -43,7 +43,7 @@ namespace LR::Grammar
     {
     public:
         explicit Grammar(const std::string& fname);
-        TokenType GetTokenType(unsigned int token)
+        TokenType GetTokenType(unsigned int token) const
         {
             const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
             const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
@@ -70,27 +70,27 @@ namespace LR::Grammar
             }
             return TokenType::TT_NONE;
         }
-        bool IsNone(unsigned int token)
+        bool IsNone(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_NONE;
         }
-        bool IsTerminalToken(unsigned int token)
+        bool IsTerminalToken(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_TOKEN_TERM;
         }
-        bool IsNonTerminalToken(unsigned int token)
+        bool IsNonTerminalToken(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_TOKEN_SYMB;
         }
-        bool IsStart(unsigned int token)
+        bool IsStart(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_START;
         }
-        bool IsTerminal(unsigned int token)
+        bool IsTerminal(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_TERMINAL;
         }
-        bool IsEpsilon(unsigned int token)
+        bool IsEpsilon(unsigned int token) const
         {
             return GetTokenType(token) == TokenType::TT_EPSILON;
         }

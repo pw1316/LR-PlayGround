@@ -92,6 +92,7 @@
   <ItemGroup>
     <ClCompile Include="Grammar.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Utils\Parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenGen\TokenGen.vcxproj">
