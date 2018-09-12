@@ -21,7 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Grammar.cpp" />
-    <ClCompile Include="Utils\Parser.cpp" />
+    <ClCompile Include="Parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="token.txt" />

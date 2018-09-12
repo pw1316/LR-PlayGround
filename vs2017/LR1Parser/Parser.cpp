@@ -1,4 +1,4 @@
-#include <Parser.hpp>
+#include "Parser.hpp"
 
 namespace LR::Parser
 {
