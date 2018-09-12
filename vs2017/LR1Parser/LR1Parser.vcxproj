@@ -83,10 +83,14 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Grammar.hpp" />
     <ClInclude Include="Lexer.hpp" />
+    <ClInclude Include="Parser.hpp" />
     <ClInclude Include="Token.hpp" />
+    <ClInclude Include="Utils\Utils.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Grammar.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -5,13 +5,22 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{2bfbceef-1fb1-488f-9238-c22e31a1c050}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Lexer.hpp" />
     <ClInclude Include="Token.hpp" />
+    <ClInclude Include="Parser.hpp" />
+    <ClInclude Include="Grammar.hpp" />
+    <ClInclude Include="Utils\Utils.hpp">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Grammar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="token.txt" />
