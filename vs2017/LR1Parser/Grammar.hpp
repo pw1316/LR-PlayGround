@@ -1,4 +1,6 @@
 #pragma once
+#include <stdafx.h>
+
 #include <string>
 #include <vector>
 
@@ -94,6 +96,35 @@ namespace LR::Grammar
         {
             return GetTokenType(token) == TokenType::TT_EPSILON;
         }
+
+        bool HasEpsilon() const
+        {
+            return m_HasEmpty;
+        }
+        unsigned int START() const
+        {
+            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
+            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
+            return TN + NTN;
+        }
+        unsigned int TERMINAL() const
+        {
+            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
+            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
+            return TN + NTN + 1;
+        }
+        unsigned int EPSILON() const
+        {
+            /*
+                To check whether token is epsilon, use:
+                if(HasEpsilon() && token == EPSILON()) { ... } as condition
+            */
+            assert(HasEpsilon());
+            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
+            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
+            return TN + NTN + 2;
+        }
+
         const std::vector<std::string>& TerminalTokenNames() const
         {
             return m_TerminalTokenNames;

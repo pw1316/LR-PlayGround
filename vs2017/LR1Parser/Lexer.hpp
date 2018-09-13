@@ -1,4 +1,6 @@
 #pragma once
+#include <stdafx.h>
+
 #include <queue>
 #include <regex>
 #include <string>

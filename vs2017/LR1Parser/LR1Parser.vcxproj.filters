@@ -17,6 +17,7 @@
     <ClInclude Include="Utils\Utils.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />

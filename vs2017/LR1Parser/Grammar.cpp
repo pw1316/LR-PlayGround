@@ -1,7 +1,5 @@
 #include "Grammar.hpp"
 
-#include <assert.h>
-
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -110,6 +108,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
 
     m_HasEmpty = hasEmpty;
 
+    std::set<unsigned int> leftOnlySymbol;
     std::map<std::string, unsigned int> auxT2I;
     unsigned int auxI = 0;
     for (auto terminal : terminals)
@@ -121,17 +120,20 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
     for (auto nonterminal : nonterminals)
     {
         m_NonTerminalTokenNames.push_back(nonterminal);
+        leftOnlySymbol.insert(auxI);
         auxT2I[nonterminal] = auxI++;
     }
 
     for (auto& g : grammar)
     {
         std::vector<unsigned int> gg;
+        bool isLeft = true;
         for (auto& smb : g)
         {
+            unsigned int token;
             if (auxT2I.find(smb) != auxT2I.end())
             {
-                gg.push_back(auxT2I[smb]);
+                token = auxT2I[smb];
             }
             else if (smb == "@")
             {
@@ -140,14 +142,25 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
                     auxI + 1 = TERMINAL
                     auxI + 2 = EPSILON
                 */
-                gg.push_back(auxI + 2);
+                token = auxI + 2;
             }
             /* Should Never Happen Due To Previous Code */
             else
             {
                 assert(false);
             }
+            gg.push_back(token);
+            if (!isLeft && leftOnlySymbol.find(token) != leftOnlySymbol.end())
+            {
+                leftOnlySymbol.erase(token);
+            }
+            isLeft = false;
         }
+        m_G.push_back(std::move(gg));
+    }
+    for (auto &leftOnly : leftOnlySymbol)
+    {
+        std::vector<unsigned int> gg{ auxI, leftOnly };
         m_G.push_back(std::move(gg));
     }
 }
