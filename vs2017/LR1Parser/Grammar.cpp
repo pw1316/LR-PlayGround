@@ -85,8 +85,10 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
                 }
                 else if (token == "@")
                 {
-                    hasEmpty = true;
-                    g.push_back(token);
+                    if (g.size() == 1)
+                    {
+                        g.push_back(token);
+                    }
                 }
                 else
                 {
@@ -94,7 +96,14 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
                     {
                         nonterminals.insert(token);
                     }
-                    g.push_back(token);
+                    if (!g.empty() && g.back() == "@")
+                    {
+                        g.back() = token;
+                    }
+                    else
+                    {
+                        g.push_back(token);
+                    }
                 }
                 isLeft = false;
             }
@@ -105,8 +114,6 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
         }
         ++lineNo;
     }
-
-    m_HasEmpty = hasEmpty;
 
     std::set<unsigned int> leftOnlySymbol;
     std::map<std::string, unsigned int> auxT2I;
@@ -142,6 +149,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
                     auxI + 1 = TERMINAL
                     auxI + 2 = EPSILON
                 */
+                hasEmpty = true;
                 token = auxI + 2;
             }
             /* Should Never Happen Due To Previous Code */
@@ -163,4 +171,5 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
         std::vector<unsigned int> gg{ auxI, leftOnly };
         m_G.push_back(std::move(gg));
     }
+    m_HasEmpty = hasEmpty;
 }
