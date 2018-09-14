@@ -1,6 +1,9 @@
 #pragma once
 #include <stdafx.h>
 
+#include <list>
+#include <map>
+#include <queue>
 #include <set>
 #include <vector>
 
@@ -8,14 +11,104 @@
 
 namespace LR::Parser
 {
+    struct LR0Item
+    {
+        unsigned int grammarId;
+        unsigned int dotPos;
+        bool operator==(const LR0Item& rhs) const
+        {
+            return grammarId == rhs.grammarId && dotPos == rhs.dotPos;
+        }
+        bool operator<(const LR0Item& rhs) const
+        {
+            if (grammarId < rhs.grammarId)
+            {
+                return true;
+            }
+            if (grammarId > rhs.grammarId)
+            {
+                return false;
+            }
+            if (dotPos < rhs.dotPos)
+            {
+                return true;
+            }
+            return false;
+        }
+        bool operator>(const LR0Item& rhs) const
+        {
+            return !(*this < rhs || *this == rhs);
+        }
+    };
+
+    struct LR1Item
+    {
+        LR0Item lr0;
+        std::set<unsigned int> lookAhead;
+        bool operator<(const LR1Item& rhs) const
+        {
+            if (lr0 < rhs.lr0)
+            {
+                return true;
+            }
+            if (lr0 > rhs.lr0)
+            {
+                return false;
+            }
+            if (lookAhead < rhs.lookAhead)
+            {
+                return true;
+            }
+            return false;
+        }
+    };
+
+    class LR0State
+    {
+    public:
+        void Clear()
+        {
+            m_closure.clear();
+        }
+        bool Empty()
+        {
+            return m_closure.empty();
+        }
+        void Add(const Grammar::Grammar& grammar, const LR0Item& item)
+        {
+            m_closure.insert(item);
+        }
+        void Closure()
+        {
+            std::queue<LR0Item> BFS;
+
+        }
+        void AddAndClosure(const Grammar::Grammar& grammar, const LR0Item& item)
+        {
+            Add(grammar, item);
+            Closure();
+        }
+    private:
+        std::set<LR0Item> m_closure;
+    };
+
+    struct LR0DFA
+    {
+        std::vector<LR0State> states;
+        std::vector<std::map<unsigned int, unsigned int>> edges;
+    };
+
     class Parser
     {
     public:
-        static std::vector<std::set<unsigned int>> FirstSet(const Grammar::Grammar& grammar)
+        using TokenSet = std::set<unsigned int>;
+        using TokenSetList = std::vector<TokenSet>;
+
+        static TokenSetList FirstSet(const Grammar::Grammar& grammar)
         {
             /* All Tokens & START & TERMINAL */
             const auto setSize = static_cast<unsigned int>(grammar.TerminalTokenNames().size() + grammar.NonTerminalTokenNames().size() + 2);
-            std::vector<std::set<unsigned int>> ret(setSize);
+            TokenSetList ret(setSize);
 
             /* Terminal's first set only contains the terminal itself */
             for (unsigned int token = 0; token < setSize; ++token)
@@ -62,11 +155,11 @@ namespace LR::Parser
             return ret;
         }
 
-        static std::vector<std::set<unsigned int>> FollowSet(const Grammar::Grammar& grammar, const std::vector<std::set<unsigned int>>& firstSet)
+        static TokenSetList FollowSet(const Grammar::Grammar& grammar, const TokenSetList& firstSet)
         {
             /* All Tokens & START & TERMINAL */
             const auto setSize = static_cast<unsigned int>(grammar.TerminalTokenNames().size() + grammar.NonTerminalTokenNames().size() + 2);
-            std::vector<std::set<unsigned int>> ret(setSize);
+            TokenSetList ret(setSize);
 
             /* First, $ is in START's Follow Set */
             ret[grammar.START()].insert(grammar.TERMINAL());
@@ -118,6 +211,33 @@ namespace LR::Parser
                 }
             }
             return ret;
+        }
+
+        static LR0DFA BuildDFALR0(const Grammar::Grammar& grammar, const TokenSetList& firstSet, const TokenSetList& followSet)
+        {
+            LR0DFA dfa;
+            LR0State state;
+            for (size_t gId = 0; gId < grammar.G().size(); ++gId)
+            {
+                if (grammar.G()[gId][0] == grammar.START())
+                {
+                    LR0Item item;
+                    item.grammarId = static_cast<unsigned int>(gId);
+                    item.dotPos = 0;
+                    state.Add(grammar, item);
+                }
+            }
+            assert(!state.Empty());
+            state.Closure();
+
+            std::queue<LR0State> BFS;
+            BFS.push(std::move(state));
+            while (!BFS.empty())
+            {
+                state = BFS.front();
+                BFS.pop();
+                // TODO BFS for edge
+            }
         }
     private:
     };

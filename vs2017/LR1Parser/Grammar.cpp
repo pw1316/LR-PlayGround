@@ -133,7 +133,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
 
     for (auto& g : grammar)
     {
-        std::vector<unsigned int> gg;
+        Production gg;
         bool isLeft = true;
         for (auto& smb : g)
         {
@@ -169,7 +169,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
     /* No Leftmost, select the LHS of first rule */
     if (leftOnlySymbol.empty())
     {
-        std::vector<unsigned int> gg{ auxI, m_G[0][0] };
+        Production gg{ auxI, m_G[0][0] };
         m_G.push_back(std::move(gg));
     }
     /* Has Leftmost, select the leftmost */
@@ -177,7 +177,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
     {
         for (auto &leftOnly : leftOnlySymbol)
         {
-            std::vector<unsigned int> gg{ auxI, leftOnly };
+            Production gg{ auxI, leftOnly };
             m_G.push_back(std::move(gg));
         }
     }

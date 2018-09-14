@@ -44,6 +44,9 @@ namespace LR::Grammar
     class Grammar
     {
     public:
+        using Production = std::vector<unsigned int>;
+        using ProductionList = std::vector<Production>;
+
         explicit Grammar(const std::string& fname);
         TokenType GetTokenType(unsigned int token) const
         {
@@ -146,6 +149,6 @@ namespace LR::Grammar
         std::vector<std::string> m_TerminalTokenNames;
         std::vector<std::string> m_TerminalTokenValues;
         std::vector<std::string> m_NonTerminalTokenNames;
-        std::vector<std::vector<unsigned int>> m_G;
+        ProductionList m_G;
     };
 }

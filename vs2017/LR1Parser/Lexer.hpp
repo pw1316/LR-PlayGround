@@ -14,9 +14,11 @@ namespace LR::Lexer
     class Lexer
     {
     public:
-        static std::queue<unsigned int> Lex(const Grammar::Grammar& g, const std::string input)
+        using TokenStream = std::queue<unsigned int>;
+
+        static TokenStream Lex(const Grammar::Grammar& g, const std::string input)
         {
-            std::queue<unsigned int> ret;
+            TokenStream ret;
             auto iter = input.begin();
             while (iter != input.end())
             {
