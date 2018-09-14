@@ -108,6 +108,10 @@ namespace LR::Parser
                         {
                             size_t oldSize = ret[g[idx]].size();
                             ret[g[idx]].insert(firstSet[g[idx + 1]].begin(), firstSet[g[idx + 1]].end());
+                            if (grammar.HasEpsilon())
+                            {
+                                ret[g[idx]].erase(grammar.EPSILON());
+                            }
                             isDirty |= oldSize != ret[g[idx]].size();
                         }
                     }
