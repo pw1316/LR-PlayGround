@@ -1,6 +1,7 @@
 #pragma once
 #include <stdafx.h>
 
+#include <fstream>
 #include <list>
 #include <map>
 #include <queue>
@@ -15,6 +16,8 @@ namespace LR::Parser
     {
         unsigned int grammarId;
         unsigned int dotPos;
+        LR0Item() : grammarId(0U), dotPos(1U) {}
+        LR0Item(unsigned int gId, unsigned int dPos) : grammarId(gId), dotPos(dPos) {}
         bool operator==(const LR0Item& rhs) const
         {
             return grammarId == rhs.grammarId && dotPos == rhs.dotPos;
@@ -78,23 +81,66 @@ namespace LR::Parser
         {
             m_closure.insert(item);
         }
-        void Closure()
+        void Closure(const Grammar::Grammar& grammar)
         {
             std::queue<LR0Item> BFS;
-
+            for (auto& item : m_closure)
+            {
+                BFS.push(item);
+            }
+            m_closure.clear();
+            std::vector<int> visited(grammar.NonTerminalTokenNames().size() + 1, 0);
+            while (!BFS.empty())
+            {
+                auto item = BFS.front();
+                BFS.pop();
+                if (item.dotPos == 1U)
+                {
+                    visited[grammar.G()[item.grammarId][0] - grammar.TerminalTokenNames().size()] = 1;
+                }
+                if (item.dotPos < grammar.G()[item.grammarId].size() && grammar.IsNonTerminalToken(grammar.G()[item.grammarId][item.dotPos]) && !visited[grammar.G()[item.grammarId][item.dotPos] - grammar.TerminalTokenNames().size()])
+                {
+                    for (size_t i = 0; i < grammar.G().size(); ++i)
+                    {
+                        if (grammar.G()[i][0] == grammar.G()[item.grammarId][item.dotPos])
+                        {
+                            LR0Item nitem(static_cast<unsigned int>(i), 1U);
+                            BFS.push(nitem);
+                        }
+                    }
+                }
+                m_closure.insert(item);
+            }
         }
         void AddAndClosure(const Grammar::Grammar& grammar, const LR0Item& item)
         {
             Add(grammar, item);
-            Closure();
+            Closure(grammar);
+        }
+        const std::set<LR0Item>& Items() const
+        {
+            return m_closure;
+        }
+        bool operator==(const LR0State& rhs) const
+        {
+            return m_closure == rhs.m_closure;
+        }
+        bool operator<(const LR0State& rhs) const
+        {
+            return m_closure < rhs.m_closure;
+        }
+        bool operator>(const LR0State& rhs) const
+        {
+            return m_closure > rhs.m_closure;
         }
     private:
         std::set<LR0Item> m_closure;
     };
 
-    struct LR0DFA
+    template<class T>
+    struct LRDFA
     {
-        std::vector<LR0State> states;
+        std::vector<T> states;
         std::vector<std::map<unsigned int, unsigned int>> edges;
     };
 
@@ -213,31 +259,134 @@ namespace LR::Parser
             return ret;
         }
 
-        static LR0DFA BuildDFALR0(const Grammar::Grammar& grammar, const TokenSetList& firstSet, const TokenSetList& followSet)
+        static LRDFA<LR0State> BuildDFALR0(const Grammar::Grammar& grammar, const TokenSetList& firstSet, const TokenSetList& followSet)
         {
-            LR0DFA dfa;
+            LRDFA<LR0State> dfa;
             LR0State state;
             for (size_t gId = 0; gId < grammar.G().size(); ++gId)
             {
                 if (grammar.G()[gId][0] == grammar.START())
                 {
-                    LR0Item item;
-                    item.grammarId = static_cast<unsigned int>(gId);
-                    item.dotPos = 0;
+                    LR0Item item(static_cast<unsigned int>(gId), 1U);
                     state.Add(grammar, item);
                 }
             }
             assert(!state.Empty());
-            state.Closure();
+            state.Closure(grammar);
 
             std::queue<LR0State> BFS;
             BFS.push(std::move(state));
+            std::map<LR0State, unsigned int> visited;
+            visited[BFS.front()] = 0U;
             while (!BFS.empty())
             {
                 state = BFS.front();
                 BFS.pop();
+                dfa.states.push_back(state);
+                dfa.edges.emplace_back();
+                std::set<unsigned int> possibleEdges;
+                for (auto& item : state.Items())
+                {
+                    if (item.dotPos < grammar.G()[item.grammarId].size() && !(grammar.HasEpsilon() && grammar.G()[item.grammarId][item.dotPos] == grammar.EPSILON()))
+                    {
+                        possibleEdges.insert(grammar.G()[item.grammarId][item.dotPos]);
+                    }
+                }
+                for (auto edge : possibleEdges)
+                {
+                    LR0State nstate;
+                    for (auto& item : state.Items())
+                    {
+                        if (item.dotPos < grammar.G()[item.grammarId].size() && grammar.G()[item.grammarId][item.dotPos] == edge)
+                        {
+                            LR0Item nitem(static_cast<unsigned int>(item.grammarId), item.dotPos + 1);
+                            nstate.Add(grammar, nitem);
+                        }
+                    }
+                    nstate.Closure(grammar);
+                    if (visited.find(nstate) != visited.end())
+                    {
+                        dfa.edges[dfa.states.size() - 1][edge] = visited[nstate];
+                    }
+                    else
+                    {
+                        BFS.push(nstate);
+                        visited[nstate] = static_cast<unsigned int>(dfa.states.size() + BFS.size() - 1U);
+                        dfa.edges[dfa.states.size() - 1][edge] = static_cast<unsigned int>(dfa.states.size() + BFS.size() - 1U);
+                    }
+                }
                 // TODO BFS for edge
             }
+            return dfa;
+        }
+
+        static void DumpDFA(const Grammar::Grammar& grammar, const LRDFA<LR0State>& dfa)
+        {
+            std::ofstream ofs("graph.md");
+            ofs << "```mermaid\n";
+            ofs << "graph LR\n";
+            unsigned int idx = 0U;
+            for (auto& state : dfa.states)
+            {
+                ofs << idx << "(\"";
+                for (auto& item : state.Items())
+                {
+                    bool isLeft = true;
+                    for (size_t tId = 0; tId < grammar.G()[item.grammarId].size(); ++tId)
+                    {
+                        auto token = grammar.G()[item.grammarId][tId];
+                        auto tokenType = grammar.GetTokenType(token);
+                        if (item.dotPos == static_cast<unsigned int>(tId))
+                        {
+                            ofs << ". ";
+                        }
+                        switch (tokenType)
+                        {
+                        case LR::Grammar::TokenType::TT_START:
+                            ofs << "! ";
+                            break;
+                        case LR::Grammar::TokenType::TT_EPSILON:
+                            ofs << "@ ";
+                            break;
+                        case LR::Grammar::TokenType::TT_TOKEN_SYMB:
+                            ofs << grammar.NonTerminalTokenNames()[token - grammar.TerminalTokenNames().size()] << " ";
+                            break;
+                        case LR::Grammar::TokenType::TT_TOKEN_TERM:
+                            ofs << grammar.TerminalTokenNames()[token] << " ";
+                            break;
+                        default:
+                            break;
+                        }
+                        if (isLeft)
+                        {
+                            ofs << "-> ";
+                        }
+                        isLeft = false;
+                    }
+                    if (item.dotPos == static_cast<unsigned int>(grammar.G()[item.grammarId].size()))
+                    {
+                        ofs << ". ";
+                    }
+                    ofs << "<br />";
+                }
+                ofs << "\")\n";
+                ++idx;
+            }
+            for (size_t sId = 0; sId < dfa.edges.size(); ++sId)
+            {
+                for (const auto& edge : dfa.edges[sId])
+                {
+                    if (grammar.IsTerminalToken(edge.first))
+                    {
+                        ofs << sId << "--" << grammar.TerminalTokenNames()[edge.first] << "-->" << edge.second << "\n";
+                    }
+                    else
+                    {
+                        ofs << sId << "--" << grammar.NonTerminalTokenNames()[edge.first - static_cast<unsigned int>(grammar.TerminalTokenNames().size())] << "-->" << edge.second << "\n";
+                    }
+                }
+            }
+            ofs << "```\n";
         }
     private:
     };

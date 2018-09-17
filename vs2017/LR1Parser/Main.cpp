@@ -14,6 +14,8 @@ int main()
     auto q = LR::Lexer::Lexer::Lex(g, "(1*(4+5+2)-3)*(6+8)");
     auto firstSet = LR::Parser::Parser::FirstSet(g);
     auto followSet = LR::Parser::Parser::FollowSet(g, firstSet);
+
+    auto lr0dfa = LR::Parser::Parser::BuildDFALR0(g, firstSet, followSet);
     std::cout << "TODO LR Items\n";
 
     /* Dump */
@@ -98,5 +100,7 @@ int main()
         }
         std::cout << "}\n";
     }
+
+    LR::Parser::Parser::DumpDFA(g, lr0dfa);
     return 0;
 }
