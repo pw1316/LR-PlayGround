@@ -1,6 +1,7 @@
 #pragma once
 #include <stdafx.h>
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@ namespace LR::Grammar
     };
     using StateId = unsigned int;
     using TokenId = unsigned int;
+    using GrammarId = unsigned int;
     struct ElementHeader
     {
         ElementType type;
@@ -45,6 +47,8 @@ namespace LR::Grammar
     using TokenNameList = std::vector<std::string>;
     using Production = std::vector<TokenId>;
     using ProductionList = std::vector<Production>;
+    using TokenSet = std::set<TokenId>;
+    using TokenSetList = std::vector<TokenSet>;
 
     class Grammar
     {
