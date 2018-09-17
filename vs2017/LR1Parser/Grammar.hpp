@@ -20,6 +20,8 @@ namespace LR::Grammar
         TT_TERMINAL,
         TT_EPSILON
     };
+    using StateId = unsigned int;
+    using TokenId = unsigned int;
     struct ElementHeader
     {
         ElementType type;
@@ -27,12 +29,12 @@ namespace LR::Grammar
     struct ElementState
     {
         ElementHeader header;
-        unsigned int stateId;
+        StateId stateId;
     };
     struct ElementToken
     {
         ElementHeader header;
-        unsigned int tokenId;
+        TokenId tokenId;
     };
     union Element
     {
@@ -40,16 +42,15 @@ namespace LR::Grammar
         ElementState state;
         ElementToken token;
     };
+    using TokenNameList = std::vector<std::string>;
+    using Production = std::vector<TokenId>;
+    using ProductionList = std::vector<Production>;
 
     class Grammar
     {
     public:
-        using NameList = std::vector<std::string>;
-        using Production = std::vector<unsigned int>;
-        using ProductionList = std::vector<Production>;
-
         explicit Grammar(const std::string& fname);
-        TokenType GetTokenType(unsigned int token) const
+        TokenType GetTokenType(TokenId token) const
         {
             if (token < NumTerminalToken())
             {
@@ -60,41 +61,41 @@ namespace LR::Grammar
                 return TokenType::TT_TOKEN_SYMB;
             }
             token -= NumToken();
-            if (token == 0)
+            if (token == 0U)
             {
                 return TokenType::TT_START;
             }
-            if (token == 1)
+            if (token == 1U)
             {
                 return TokenType::TT_TERMINAL;
             }
-            if (m_HasEmpty && token == 2)
+            if (m_HasEmpty && token == 2U)
             {
                 return TokenType::TT_EPSILON;
             }
             return TokenType::TT_NONE;
         }
-        bool IsNone(unsigned int token) const
+        bool IsNone(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_NONE;
         }
-        bool IsTerminalToken(unsigned int token) const
+        bool IsTerminalToken(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_TOKEN_TERM;
         }
-        bool IsNonTerminalToken(unsigned int token) const
+        bool IsNonTerminalToken(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_TOKEN_SYMB;
         }
-        bool IsStart(unsigned int token) const
+        bool IsStart(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_START;
         }
-        bool IsTerminal(unsigned int token) const
+        bool IsTerminal(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_TERMINAL;
         }
-        bool IsEpsilon(unsigned int token) const
+        bool IsEpsilon(TokenId token) const
         {
             return GetTokenType(token) == TokenType::TT_EPSILON;
         }
@@ -103,15 +104,15 @@ namespace LR::Grammar
         {
             return m_HasEmpty;
         }
-        unsigned int START() const
+        TokenId START() const
         {
             return NumToken();
         }
-        unsigned int TERMINAL() const
+        TokenId TERMINAL() const
         {
             return NumToken() + 1U;
         }
-        unsigned int EPSILON() const
+        TokenId EPSILON() const
         {
             /*
                 To check whether token is epsilon, use:
@@ -121,7 +122,7 @@ namespace LR::Grammar
             return NumToken() + 2U;
         }
 
-        const NameList& TerminalTokenValues() const
+        const TokenNameList& TerminalTokenValues() const
         {
             return m_TerminalTokenValues;
         }
@@ -129,7 +130,7 @@ namespace LR::Grammar
         {
             return m_G;
         }
-        const std::string& GetTokenName(unsigned int token) const
+        const std::string& GetTokenName(TokenId token) const
         {
             if (IsTerminalToken(token))
             {
@@ -153,15 +154,15 @@ namespace LR::Grammar
             }
             return m_NONE;
         }
-        const unsigned int NumTerminalToken() const
+        const TokenId NumTerminalToken() const
         {
-            return static_cast<unsigned int>(m_TerminalTokenNames.size());
+            return static_cast<TokenId>(m_TerminalTokenNames.size());
         }
-        const unsigned int NumNonTerminalToken() const
+        const TokenId NumNonTerminalToken() const
         {
-            return static_cast<unsigned int>(m_NonTerminalTokenNames.size());
+            return static_cast<TokenId>(m_NonTerminalTokenNames.size());
         }
-        const unsigned int NumToken() const
+        const TokenId NumToken() const
         {
             return NumTerminalToken() + NumNonTerminalToken();
         }
@@ -171,9 +172,9 @@ namespace LR::Grammar
         const std::string m_TERMINAL = "$";
         const std::string m_EPSILON = "@";
         bool m_HasEmpty;
-        NameList m_TerminalTokenNames;
-        NameList m_TerminalTokenValues;
-        NameList m_NonTerminalTokenNames;
+        TokenNameList m_TerminalTokenNames;
+        TokenNameList m_TerminalTokenValues;
+        TokenNameList m_NonTerminalTokenNames;
         ProductionList m_G;
     };
 }

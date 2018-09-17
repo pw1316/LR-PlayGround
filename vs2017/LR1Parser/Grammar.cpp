@@ -115,9 +115,9 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
         ++lineNo;
     }
 
-    std::set<unsigned int> leftOnlySymbol;
-    std::map<std::string, unsigned int> auxT2I;
-    unsigned int auxI = 0;
+    std::set<TokenId> leftOnlySymbol;
+    std::map<std::string, TokenId> auxT2I;
+    TokenId auxI = 0;
     for (auto terminal : terminals)
     {
         m_TerminalTokenNames.push_back(terminal);
@@ -137,7 +137,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
         bool isLeft = true;
         for (auto& smb : g)
         {
-            unsigned int token;
+            TokenId token;
             if (auxT2I.find(smb) != auxT2I.end())
             {
                 token = auxT2I[smb];
