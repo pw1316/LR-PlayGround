@@ -78,12 +78,12 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
             bool isLeft = true;
             while (ss >> token)
             {
-                if (isLeft && (terminals.find(token) != terminals.end() || token == "@"))
+                if (isLeft && (terminals.find(token) != terminals.end() || token == m_EPSILON))
                 {
                     std::cout << std::setw(6) << lineNo << "[WARN] The symbol on the left side is a terminal(or epsilon). Ignore this grammar\n";
                     break;
                 }
-                else if (token == "@")
+                else if (token == m_EPSILON)
                 {
                     if (g.size() == 1)
                     {
@@ -96,7 +96,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
                     {
                         nonterminals.insert(token);
                     }
-                    if (!g.empty() && g.back() == "@")
+                    if (!g.empty() && g.back() == m_EPSILON)
                     {
                         g.back() = token;
                     }
@@ -142,7 +142,7 @@ LR::Grammar::Grammar::Grammar(const std::string& fname)
             {
                 token = auxT2I[smb];
             }
-            else if (smb == "@")
+            else if (smb == m_EPSILON)
             {
                 /*
                     auxI     = START

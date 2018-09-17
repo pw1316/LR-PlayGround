@@ -16,14 +16,14 @@ int main()
     auto followSet = LR::Parser::Parser::FollowSet(g, firstSet);
 
     auto lr0dfa = LR::Parser::Parser::BuildDFALR0(g, firstSet, followSet);
-    std::cout << "TODO LR Items\n";
+    std::cout << "TODO LR1 Items\n";
 
     /* Dump */
     std::cout << "Token string:\n  ";
     auto tmpq = q;
     while (!tmpq.empty())
     {
-        std::cout << g.TerminalTokenNames()[tmpq.front()] << " ";
+        std::cout << g.GetTokenName(tmpq.front()) << " ";
         tmpq.pop();
     }
     std::cout << "\n";
@@ -36,24 +36,7 @@ int main()
         std::cout << std::setw(4) << idx++ << " ";
         for (auto token : gg)
         {
-            auto tokenType = g.GetTokenType(token);
-            switch (tokenType)
-            {
-            case LR::Grammar::TokenType::TT_START:
-                std::cout << "! ";
-                break;
-            case LR::Grammar::TokenType::TT_EPSILON:
-                std::cout << "@ ";
-                break;
-            case LR::Grammar::TokenType::TT_TOKEN_SYMB:
-                std::cout << g.NonTerminalTokenNames()[token - g.TerminalTokenNames().size()] << " ";
-                break;
-            case LR::Grammar::TokenType::TT_TOKEN_TERM:
-                std::cout << g.TerminalTokenNames()[token] << " ";
-                break;
-            default:
-                break;
-            }
+            std::cout << g.GetTokenName(token) << " ";
             if (isLeft)
             {
                 std::cout << "-> ";
@@ -64,43 +47,23 @@ int main()
     }
 
     /* SETS */
-    std::cout << "Grammar:\n";
-    for (size_t i = 0; i < g.NonTerminalTokenNames().size() + 1; ++i)
+    std::cout << "First/Follow Set:\n";
+    for (unsigned int i = 0; i < static_cast<unsigned int>(g.NumToken()) + 2U; ++i)
     {
-        if (static_cast<unsigned int>(i + g.TerminalTokenNames().size()) == g.START())
+        std::cout << "  " << g.GetTokenName(i) << ": {";
+        for (auto token : firstSet[i])
         {
-            std::cout << "  !: {";
-        }
-        else
-        {
-            std::cout << "  " << g.NonTerminalTokenNames()[i] << ": {";
-        }
-        for (auto token : firstSet[i + g.TerminalTokenNames().size()])
-        {
-            if (g.HasEpsilon() && token == g.EPSILON())
-            {
-                std::cout << "@,";
-            }
-            else
-            {
-                std::cout << g.TerminalTokenNames()[token] << ",";
-            }
+            std::cout << g.GetTokenName(token) << ",";
         }
         std::cout << "} {";
-        for (auto token : followSet[i + g.TerminalTokenNames().size()])
+        for (auto token : followSet[i])
         {
-            if (token == g.TERMINAL())
-            {
-                std::cout << "$,";
-            }
-            else
-            {
-                std::cout << g.TerminalTokenNames()[token] << ",";
-            }
+            std::cout << g.GetTokenName(token) << ",";
         }
         std::cout << "}\n";
     }
 
+    /* LR0 DFA */
     LR::Parser::Parser::DumpDFA(g, lr0dfa);
     return 0;
 }

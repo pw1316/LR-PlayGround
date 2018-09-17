@@ -44,23 +44,22 @@ namespace LR::Grammar
     class Grammar
     {
     public:
+        using NameList = std::vector<std::string>;
         using Production = std::vector<unsigned int>;
         using ProductionList = std::vector<Production>;
 
         explicit Grammar(const std::string& fname);
         TokenType GetTokenType(unsigned int token) const
         {
-            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
-            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
-            if (token < TN)
+            if (token < NumTerminalToken())
             {
                 return TokenType::TT_TOKEN_TERM;
             }
-            if (token < TN + NTN)
+            if (token < NumToken())
             {
                 return TokenType::TT_TOKEN_SYMB;
             }
-            token -= TN + NTN;
+            token -= NumToken();
             if (token == 0)
             {
                 return TokenType::TT_START;
@@ -69,7 +68,7 @@ namespace LR::Grammar
             {
                 return TokenType::TT_TERMINAL;
             }
-            if (token == 2 && m_HasEmpty)
+            if (m_HasEmpty && token == 2)
             {
                 return TokenType::TT_EPSILON;
             }
@@ -106,15 +105,11 @@ namespace LR::Grammar
         }
         unsigned int START() const
         {
-            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
-            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
-            return TN + NTN;
+            return NumToken();
         }
         unsigned int TERMINAL() const
         {
-            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
-            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
-            return TN + NTN + 1;
+            return NumToken() + 1U;
         }
         unsigned int EPSILON() const
         {
@@ -123,32 +118,62 @@ namespace LR::Grammar
                 if(HasEpsilon() && token == EPSILON()) { ... } as condition
             */
             assert(HasEpsilon());
-            const auto TN = static_cast<unsigned int>(m_TerminalTokenNames.size());
-            const auto NTN = static_cast<unsigned int>(m_NonTerminalTokenNames.size());
-            return TN + NTN + 2;
+            return NumToken() + 2U;
         }
 
-        const std::vector<std::string>& TerminalTokenNames() const
-        {
-            return m_TerminalTokenNames;
-        }
-        const std::vector<std::string>& TerminalTokenValues() const
+        const NameList& TerminalTokenValues() const
         {
             return m_TerminalTokenValues;
         }
-        const std::vector<std::string>& NonTerminalTokenNames() const
-        {
-            return m_NonTerminalTokenNames;
-        }
-        const std::vector<std::vector<unsigned int>>& G() const
+        const ProductionList& G() const
         {
             return m_G;
         }
+        const std::string& GetTokenName(unsigned int token) const
+        {
+            if (IsTerminalToken(token))
+            {
+                return m_TerminalTokenNames[token];
+            }
+            if (IsNonTerminalToken(token))
+            {
+                return m_NonTerminalTokenNames[token - NumTerminalToken()];
+            }
+            if (IsStart(token))
+            {
+                return m_START;
+            }
+            if (IsTerminal(token))
+            {
+                return m_TERMINAL;
+            }
+            if (IsEpsilon(token))
+            {
+                return m_EPSILON;
+            }
+            return m_NONE;
+        }
+        const unsigned int NumTerminalToken() const
+        {
+            return static_cast<unsigned int>(m_TerminalTokenNames.size());
+        }
+        const unsigned int NumNonTerminalToken() const
+        {
+            return static_cast<unsigned int>(m_NonTerminalTokenNames.size());
+        }
+        const unsigned int NumToken() const
+        {
+            return NumTerminalToken() + NumNonTerminalToken();
+        }
     private:
+        const std::string m_NONE = "";
+        const std::string m_START = "!";
+        const std::string m_TERMINAL = "$";
+        const std::string m_EPSILON = "@";
         bool m_HasEmpty;
-        std::vector<std::string> m_TerminalTokenNames;
-        std::vector<std::string> m_TerminalTokenValues;
-        std::vector<std::string> m_NonTerminalTokenNames;
+        NameList m_TerminalTokenNames;
+        NameList m_TerminalTokenValues;
+        NameList m_NonTerminalTokenNames;
         ProductionList m_G;
     };
 }
