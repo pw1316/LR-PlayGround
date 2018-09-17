@@ -66,5 +66,6 @@ int main()
 
     /* LR0 DFA */
     LR::Parser::Parser::DumpDFA(g, lr0dfa);
+    LR::Parser::Parser::DumpDFA(g, lr1dfa);
     return 0;
 }
