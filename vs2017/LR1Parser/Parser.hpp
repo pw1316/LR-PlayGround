@@ -147,7 +147,6 @@ namespace LR::Parser
         std::set<LR0Item> m_closure;
     };
 
-
     class LR1State
     {
     public:
@@ -464,6 +463,8 @@ namespace LR::Parser
             }
             assert(!state.Empty());
             state.Closure(grammar, firstSet);
+
+            // TODO LR(1) DFA
 
             return dfa;
         }
