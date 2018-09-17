@@ -16,6 +16,7 @@ int main()
     auto followSet = LR::Parser::Parser::FollowSet(g, firstSet);
 
     auto lr0dfa = LR::Parser::Parser::BuildDFALR0(g, firstSet, followSet);
+    auto lr1dfa = LR::Parser::Parser::BuildDFALR1(g, firstSet, followSet);
     std::cout << "TODO LR1 Items\n";
 
     /* Dump */

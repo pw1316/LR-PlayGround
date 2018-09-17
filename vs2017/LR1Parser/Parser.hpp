@@ -73,7 +73,7 @@ namespace LR::Parser
             return !(*this < rhs || *this == rhs);
         }
         LR0Item lr0;
-        std::set<Grammar::TokenId> lookAhead;
+        Grammar::TokenSet lookAhead;
     };
 
     class LR0State
@@ -145,6 +145,126 @@ namespace LR::Parser
         }
     private:
         std::set<LR0Item> m_closure;
+    };
+
+
+    class LR1State
+    {
+    public:
+        void Clear()
+        {
+            m_closure.clear();
+        }
+        bool Empty()
+        {
+            return m_closure.empty();
+        }
+        void Add(const LR1Item& item)
+        {
+            m_closure.insert(item);
+        }
+        void Closure(const Grammar::Grammar& grammar, const Grammar::TokenSetList& firstSet)
+        {
+            std::queue<LR1Item> BFS;
+            for (auto& item : m_closure)
+            {
+                BFS.push(item);
+            }
+            m_closure.clear();
+            std::vector<std::set<Grammar::TokenId>> visited(grammar.NumToken() + 2);
+            while (!BFS.empty())
+            {
+                auto item = BFS.front();
+                BFS.pop();
+                if (item.lr0.dotPos == 1U)
+                {
+                    visited[grammar.G()[item.lr0.grammarId][0]].insert(item.lookAhead.begin(), item.lookAhead.end());
+                }
+                if (item.lr0.dotPos < grammar.G()[item.lr0.grammarId].size() && grammar.IsNonTerminalToken(grammar.G()[item.lr0.grammarId][item.lr0.dotPos]))
+                {
+                    Grammar::TokenSet lookAhead;
+                    Grammar::TokenId pos = item.lr0.dotPos + 1;
+                    while (pos < grammar.G()[item.lr0.grammarId].size())
+                    {
+                        assert(!grammar.IsEpsilon(grammar.G()[item.lr0.grammarId][pos]));
+                        lookAhead.insert(firstSet[grammar.G()[item.lr0.grammarId][pos]].begin(), firstSet[grammar.G()[item.lr0.grammarId][pos]].end());
+                        if (grammar.HasEpsilon() && firstSet[grammar.G()[item.lr0.grammarId][pos]].find(grammar.EPSILON()) != firstSet[grammar.G()[item.lr0.grammarId][pos]].end())
+                        {
+                            ++pos;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    if (pos == grammar.G()[item.lr0.grammarId].size())
+                    {
+                        lookAhead.insert(grammar.TERMINAL());
+                    }
+                    for (auto lah : lookAhead)
+                    {
+                        if (visited[grammar.G()[item.lr0.grammarId][item.lr0.dotPos]].find(lah) == visited[grammar.G()[item.lr0.grammarId][item.lr0.dotPos]].end())
+                        {
+                            for (size_t i = 0; i < grammar.G().size(); ++i)
+                            {
+                                if (grammar.G()[i][0] == grammar.G()[item.lr0.grammarId][item.lr0.dotPos])
+                                {
+                                    LR1Item nitem(static_cast<Grammar::GrammarId>(i), 1U, { lah });
+                                    BFS.push(nitem);
+                                }
+                            }
+                        }
+                    }
+                }
+                m_closure.insert(item);
+            }
+            /* Merge LookAheads */
+            std::set<LR1Item> nclosure;
+            for (auto& item : m_closure)
+            {
+                bool found = false;
+                for (auto& nitem : nclosure)
+                {
+                    if (nitem.lr0 == item.lr0)
+                    {
+                        auto nnitem = nitem;
+                        nnitem.lookAhead.insert(item.lookAhead.begin(), item.lookAhead.end());
+                        nclosure.erase(nitem);
+                        nclosure.insert(nnitem);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    nclosure.insert(item);
+                }
+            }
+            m_closure = std::move(nclosure);
+        }
+        void AddAndClosure(const Grammar::Grammar& grammar, const LR1Item& item, const Grammar::TokenSetList& firstSet)
+        {
+            Add(item);
+            Closure(grammar, firstSet);
+        }
+        const std::set<LR1Item>& Items() const
+        {
+            return m_closure;
+        }
+        bool operator==(const LR1State& rhs) const
+        {
+            return m_closure == rhs.m_closure;
+        }
+        bool operator<(const LR1State& rhs) const
+        {
+            return m_closure < rhs.m_closure;
+        }
+        bool operator>(const LR1State& rhs) const
+        {
+            return m_closure > rhs.m_closure;
+        }
+    private:
+        std::set<LR1Item> m_closure;
     };
 
     template<class T>
@@ -327,6 +447,24 @@ namespace LR::Parser
                     }
                 }
             }
+            return dfa;
+        }
+
+        static LRDFA<LR1State> BuildDFALR1(const Grammar::Grammar& grammar, const Grammar::TokenSetList& firstSet, const Grammar::TokenSetList& followSet)
+        {
+            LRDFA<LR1State> dfa;
+            LR1State state;
+            for (size_t gId = 0; gId < grammar.G().size(); ++gId)
+            {
+                if (grammar.IsStart(grammar.G()[gId][0]))
+                {
+                    LR1Item item(static_cast<Grammar::GrammarId>(gId), 1U, { grammar.TERMINAL() });
+                    state.Add(item);
+                }
+            }
+            assert(!state.Empty());
+            state.Closure(grammar, firstSet);
+
             return dfa;
         }
 
