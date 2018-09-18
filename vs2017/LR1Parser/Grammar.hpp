@@ -1,6 +1,7 @@
 #pragma once
 #include <stdafx.h>
 
+#include <list>
 #include <set>
 #include <string>
 #include <vector>
@@ -49,6 +50,7 @@ namespace LR::Grammar
     using ProductionList = std::vector<Production>;
     using TokenSet = std::set<TokenId>;
     using TokenSetList = std::vector<TokenSet>;
+    using ParseStack = std::list<Element>;
 
     class Grammar
     {
@@ -169,6 +171,26 @@ namespace LR::Grammar
         const TokenId NumToken() const
         {
             return NumTerminalToken() + NumNonTerminalToken();
+        }
+
+        void DumpGrammar() const
+        {
+            GrammarId idx = 0U;
+            for (auto& production : m_G)
+            {
+                bool isLeft = true;
+                std::cout << "[GRAMMAR] " << std::setw(2) << idx++ << " ";
+                for (auto token : production)
+                {
+                    std::cout << GetTokenName(token) << " ";
+                    if (isLeft)
+                    {
+                        std::cout << "-> ";
+                    }
+                    isLeft = false;
+                }
+                std::cout << "\n";
+            }
         }
     private:
         const std::string m_NONE = "";

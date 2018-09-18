@@ -16,5 +16,6 @@ S @
 E E plus T
 E T
 T T mul id
+T T mul lp E rp
 T id
 T lp E rp

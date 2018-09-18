@@ -1,7 +1,7 @@
 #pragma once
 #include <stdafx.h>
 
-#include <queue>
+#include <list>
 #include <regex>
 #include <string>
 
@@ -9,11 +9,11 @@
 
 namespace LR::Lexer
 {
+    using TokenStream = std::list<unsigned int>;
+
     class Lexer
     {
     public:
-        using TokenStream = std::queue<unsigned int>;
-
         static TokenStream Lex(const Grammar::Grammar& g, const std::string input)
         {
             TokenStream ret;
@@ -26,7 +26,7 @@ namespace LR::Lexer
                     std::smatch ms;
                     if (std::regex_search(iter, input.end(), ms, std::regex(g.TerminalTokenValues()[tId]), std::regex_constants::match_continuous))
                     {
-                        ret.push(tId);
+                        ret.push_back(tId);
                         iter += ms[0].length();
                         isFailed = false;
                         break;
@@ -39,6 +39,15 @@ namespace LR::Lexer
                 }
             }
             return ret;
+        }
+        static void DumpTokenStream(const Grammar::Grammar& g, const TokenStream& ts)
+        {
+            std::cout << "[INPUT] ";
+            for (auto token : ts)
+            {
+                std::cout << g.GetTokenName(token) << " ";
+            }
+            std::cout << "\n";
         }
     private:
     };

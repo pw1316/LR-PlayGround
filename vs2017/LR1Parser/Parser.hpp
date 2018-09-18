@@ -2,6 +2,7 @@
 #include <stdafx.h>
 
 #include <fstream>
+#include <functional>
 #include <list>
 #include <map>
 #include <queue>
@@ -9,6 +10,7 @@
 #include <vector>
 
 #include <Grammar.hpp>
+#include <Lexer.hpp>
 
 namespace LR::Parser
 {
@@ -199,7 +201,7 @@ namespace LR::Parser
                     }
                     if (pos == grammar.G()[item.lr0.grammarId].size())
                     {
-                        lookAhead.insert(grammar.TERMINAL());
+                        lookAhead.insert(item.lookAhead.begin(), item.lookAhead.end());
                     }
                     for (auto lah : lookAhead)
                     {
@@ -289,6 +291,9 @@ namespace LR::Parser
 
     class Parser
     {
+    private:
+        using TransformCB = std::function<bool(const Grammar::Grammar&)>;
+        using TransformTable = std::vector<std::vector<TransformCB>>;
     public:
         static Grammar::TokenSetList FirstSet(const Grammar::Grammar& grammar)
         {
@@ -463,67 +468,133 @@ namespace LR::Parser
         static LRDFA<LR1State> BuildDFALR1(const Grammar::Grammar& grammar, const Grammar::TokenSetList& firstSet, const Grammar::TokenSetList& followSet)
         {
             LRDFA<LR1State> dfa;
-            LR1State state;
+            LR1State initState;
             for (size_t gId = 0; gId < grammar.G().size(); ++gId)
             {
                 if (grammar.IsStart(grammar.G()[gId][0]))
                 {
                     LR1Item item(static_cast<Grammar::GrammarId>(gId), 1U, { grammar.TERMINAL() });
-                    state.Add(item);
+                    initState.Add(item);
                 }
             }
-            assert(!state.Empty());
-            state.Closure(grammar, firstSet);
+            assert(!initState.Empty());
+            initState.Closure(grammar, firstSet);
 
-            std::queue<LR1State> BFS;
-            BFS.push(std::move(state));
+            dfa.states.push_back(initState);
+            dfa.edges.emplace_back();
             std::map<LR0State, Grammar::StateId> visited;
-            visited[BFS.front().Core(grammar)] = 0U;
+            visited[dfa.states[0U].Core(grammar)] = 0U;
+            std::queue<Grammar::StateId> BFS;
+            BFS.push(0U);
             while (!BFS.empty())
             {
-                state = BFS.front();
+                auto curStateId = BFS.front();
                 BFS.pop();
-                dfa.states.push_back(state);
-                dfa.edges.emplace_back();
                 std::set<Grammar::TokenId> possibleEdges;
-                for (auto& item : state.Items())
+                for (auto& curItem : dfa.states[curStateId].Items())
                 {
-                    if (item.lr0.dotPos < grammar.G()[item.lr0.grammarId].size() && !grammar.IsEpsilon(grammar.G()[item.lr0.grammarId][item.lr0.dotPos]))
+                    if (curItem.lr0.dotPos < grammar.G()[curItem.lr0.grammarId].size() && !grammar.IsEpsilon(grammar.G()[curItem.lr0.grammarId][curItem.lr0.dotPos]))
                     {
-                        possibleEdges.insert(grammar.G()[item.lr0.grammarId][item.lr0.dotPos]);
+                        possibleEdges.insert(grammar.G()[curItem.lr0.grammarId][curItem.lr0.dotPos]);
                     }
                 }
                 for (auto edge : possibleEdges)
                 {
-                    LR1State nstate;
-                    for (auto& item : state.Items())
+                    LR1State nextState;
+                    for (auto& curItem : dfa.states[curStateId].Items())
                     {
-                        if (item.lr0.dotPos < grammar.G()[item.lr0.grammarId].size() && grammar.G()[item.lr0.grammarId][item.lr0.dotPos] == edge)
+                        if (curItem.lr0.dotPos < grammar.G()[curItem.lr0.grammarId].size() && grammar.G()[curItem.lr0.grammarId][curItem.lr0.dotPos] == edge)
                         {
-                            LR1Item nitem(item.lr0.grammarId, item.lr0.dotPos + 1, item.lookAhead);
-                            nstate.Add(nitem);
+                            LR1Item nextItem(curItem.lr0.grammarId, curItem.lr0.dotPos + 1, curItem.lookAhead);
+                            nextState.Add(nextItem);
                         }
                     }
-                    nstate.Closure(grammar, firstSet);
-                    if (visited.find(nstate.Core(grammar)) != visited.end())
+                    nextState.Closure(grammar, firstSet);
+                    if (visited.find(nextState.Core(grammar)) != visited.end())
                     {
-                        dfa.edges[dfa.states.size() - 1U][edge] = visited[nstate.Core(grammar)];
-                        for (auto& item : nstate.Items())
+                        Grammar::StateId existStateId = visited[nextState.Core(grammar)];
+                        auto backup = dfa.states[existStateId];
+                        for (auto& nextItem : nextState.Items())
                         {
-                            dfa.states[dfa.states.size() - 1U].Add(item);
+                            dfa.states[existStateId].Add(nextItem);
                         }
-                        dfa.states[dfa.states.size() - 1U].Closure(grammar, firstSet);
+                        dfa.states[existStateId].Closure(grammar, firstSet);
+                        if (!(backup == dfa.states[existStateId]))
+                        {
+                            BFS.push(existStateId);
+                        }
+                        dfa.edges[curStateId][edge] = existStateId;
                     }
                     else
                     {
-                        BFS.push(nstate);
-                        auto nStateId = static_cast<Grammar::StateId>(dfa.states.size() + BFS.size() - 1U);
-                        visited[nstate.Core(grammar)] = nStateId;
-                        dfa.edges[dfa.states.size() - 1][edge] = nStateId;
+                        auto nStateId = static_cast<Grammar::StateId>(dfa.states.size());
+                        dfa.states.push_back(nextState);
+                        dfa.edges.emplace_back();
+                        BFS.push(nStateId);
+                        visited[nextState.Core(grammar)] = nStateId;
+                        dfa.edges[curStateId][edge] = nStateId;
                     }
                 }
             }
             return dfa;
+        }
+
+        static std::vector<std::vector<TransformCB>> BuildTransformTable(const Grammar::Grammar& grammar, const LRDFA<LR1State>& dfa, Parser& parser)
+        {
+            std::vector<std::vector<TransformCB>> ret(dfa.states.size(), std::vector<TransformCB>(grammar.NumToken() + 2U, nullptr));
+            for (Grammar::StateId sId = 0U; sId < static_cast<Grammar::StateId>(dfa.states.size()); ++sId)
+            {
+                for (auto& edge : dfa.edges[sId])
+                {
+                    if (grammar.IsTerminalToken(edge.first) || grammar.IsTerminal(edge.first))
+                    {
+                        ret[sId][edge.first] = std::bind(&Parser::Shift, &parser, std::placeholders::_1, edge.first, edge.second);
+                    }
+                    else if (grammar.IsNonTerminalToken(edge.first) || grammar.IsStart(edge.first))
+                    {
+                        ret[sId][edge.first] = std::bind(&Parser::Goto, &parser, std::placeholders::_1, edge.first, edge.second);
+                    }
+                }
+                for (auto& item : dfa.states[sId].Items())
+                {
+                    if (item.lr0.dotPos == grammar.G()[item.lr0.grammarId].size())
+                    {
+                        for (auto token : item.lookAhead)
+                        {
+                            if (ret[sId][token] != nullptr)
+                            {
+                                std::cout << "[ERR] Not LR(1) language!!!\n";
+                                return std::vector<std::vector<TransformCB>>();
+                            }
+                            ret[sId][token] = std::bind(&Parser::Reduce, &parser, std::placeholders::_1, token, item.lr0.grammarId);
+                        }
+                    }
+                }
+            }
+            return ret;
+        }
+
+        static bool IsLR0(const Grammar::Grammar& grammar, const LRDFA<LR0State>& dfa)
+        {
+            for (Grammar::StateId sId = 0; sId < static_cast<Grammar::StateId>(dfa.states.size()); ++sId)
+            {
+                for (auto iter1 = dfa.states[sId].Items().begin(); iter1 != dfa.states[sId].Items().end(); ++iter1)
+                {
+                    for (auto iter2 = iter1; iter2 != dfa.states[sId].Items().end(); ++iter2)
+                    {
+                        if (iter1 != iter2)
+                        {
+                            if (iter1->dotPos == grammar.G()[iter1->grammarId].size()\
+                                || iter2->dotPos == grammar.G()[iter2->grammarId].size())
+                            {
+                                std::cout << "[ERR LR0] Conflict at state " << sId << "\n";
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
         }
 
         static void DumpDFA(const Grammar::Grammar& grammar, const LRDFA<LR0State>& dfa)
@@ -621,6 +692,122 @@ namespace LR::Parser
             }
             ofs << "```\n";
         }
+
+        Parser(const Grammar::Grammar& grammar)
+        {
+            bool res = true;
+            m_firstSet = FirstSet(grammar);
+            m_followSet = FollowSet(grammar, m_firstSet);
+
+            m_LR0DFA = BuildDFALR0(grammar, m_firstSet, m_followSet);
+            m_LR1DFA = BuildDFALR1(grammar, m_firstSet, m_followSet);
+            m_table = BuildTransformTable(grammar, m_LR1DFA, *this);
+        }
+        void BeginParse(const Grammar::Grammar& grammar, const Lexer::TokenStream& ts)
+        {
+            m_parseStack.clear();
+            Grammar::Element ele;
+            ele.state.header.type = Grammar::ElementType::State;
+            ele.state.stateId = 0U;
+            m_parseStack.push_back(ele);
+
+            m_tokenStream = ts;
+            if (m_tokenStream.back() != grammar.TERMINAL())
+            {
+                m_tokenStream.push_back(grammar.TERMINAL());
+            }
+        }
+        bool Step(const Grammar::Grammar& grammar)
+        {
+            if (m_tokenStream.empty())
+            {
+                return false;
+            }
+            if (m_tokenStream.front() == grammar.START())
+            {
+                std::cout << "[PARSE] DONE.\n";
+                return false;
+            }
+            auto token = m_tokenStream.front();
+            m_table[m_parseStack.back().state.stateId][token](grammar);
+            return true;
+        }
     private:
+        bool Shift(const Grammar::Grammar& grammar, Grammar::TokenId token, Grammar::StateId state)
+        {
+            std::cout << "[PARSE] SHIFT " << grammar.GetTokenName(token) << " to " << state << "\n";
+            if (m_tokenStream.empty())
+            {
+                return false;
+            }
+            auto tstoken = m_tokenStream.front();
+            assert(tstoken == token);
+            m_tokenStream.pop_front();
+            Grammar::Element ele;
+            ele.token.header.type = Grammar::ElementType::Token;
+            ele.token.tokenId = token;
+            m_parseStack.push_back(ele);
+
+            ele.state.header.type = Grammar::ElementType::State;
+            ele.state.stateId = state;
+            m_parseStack.push_back(ele);
+            return true;
+        }
+
+        bool Goto(const Grammar::Grammar& grammar, Grammar::TokenId token, Grammar::StateId state)
+        {
+            std::cout << "[PARSE] GOTO " << state << "\n";
+            if (m_tokenStream.empty())
+            {
+                return false;
+            }
+            auto tstoken = m_tokenStream.front();
+            assert(tstoken == token);
+            m_tokenStream.pop_front();
+            Grammar::Element ele;
+            ele.token.header.type = Grammar::ElementType::Token;
+            ele.token.tokenId = token;
+            m_parseStack.push_back(ele);
+
+            ele.state.header.type = Grammar::ElementType::State;
+            ele.state.stateId = state;
+            m_parseStack.push_back(ele);
+            return true;
+        }
+
+        bool Reduce(const Grammar::Grammar& grammar, Grammar::TokenId token, Grammar::GrammarId gId)
+        {
+            std::cout << "[PARSE] REDUCE ";
+            {
+                bool isLeft = true;
+                for (auto token : grammar.G()[gId])
+                {
+                    std::cout << grammar.GetTokenName(token) << " ";
+                    if (isLeft)
+                    {
+                        std::cout << "-> ";
+                    }
+                    isLeft = false;
+                }
+                std::cout << "\n";
+            }
+            auto &g = grammar.G()[gId];
+            for (size_t i = 1; i < g.size(); ++i)
+            {
+                m_parseStack.pop_back();
+                m_parseStack.pop_back();
+            }
+
+            m_tokenStream.push_front(g[0]);
+            return true;
+        }
+
+        Grammar::TokenSetList m_firstSet;
+        Grammar::TokenSetList m_followSet;
+        LRDFA<LR0State> m_LR0DFA;
+        LRDFA<LR1State> m_LR1DFA;
+        TransformTable m_table;
+        Grammar::ParseStack m_parseStack;
+        Lexer::TokenStream m_tokenStream;
     };
 }
