@@ -1,10 +1,10 @@
 #include <stdafx.h>
 
-#include <queue>
-
-#include <Grammar.hpp>
 #include <Lexer.hpp>
+#include <Grammar.hpp>
 #include <Parser.hpp>
+
+#include <string>
 
 int main()
 {
@@ -14,15 +14,15 @@ int main()
     auto tokenStream = LR::Lexer::Lexer::Lex(grammar, "(1*(4+5+2)-3)*(6+8)");
     LR::Lexer::Lexer::DumpTokenStream(grammar, tokenStream);
 
-    auto firstSet = LR::Parser::Parser::FirstSet(grammar);
-    auto followSet = LR::Parser::Parser::FollowSet(grammar, firstSet);
+    auto ffSet = LR::Parser::LRParser::FirstAndFollowSet(grammar);
+    auto[firstSet, followSet] = ffSet;
 
-    auto lr0dfa = LR::Parser::Parser::BuildDFALR0(grammar, firstSet, followSet);
-    auto lr1dfa = LR::Parser::Parser::BuildDFALR1(grammar, firstSet, followSet);
+    //auto lr0dfa = LR::Parser::Parser::BuildDFALR0(grammar, firstSet, followSet);
+    auto dfa = LR::Parser::LRParser(grammar);
 
     /* SETS */
     std::cout << "First/Follow Set:\n";
-    for (unsigned int i = 0; i < static_cast<unsigned int>(grammar.NumToken()) + 2U; ++i)
+    for (LR::Utils::TokenId i = 0U; i < static_cast<LR::Utils::TokenId>(grammar.NumToken()) + 2U; ++i)
     {
         std::cout << "  " << grammar.GetTokenName(i) << ": {";
         for (auto token : firstSet[i])
@@ -37,12 +37,10 @@ int main()
         std::cout << "}\n";
     }
 
-    /* LR0 DFA */
-    LR::Parser::Parser::DumpDFA(grammar, lr0dfa);
-    LR::Parser::Parser::DumpDFA(grammar, lr1dfa);
+    dfa.Dump(grammar);
 
-    LR::Parser::Parser parser(grammar);
-    parser.BeginParse(grammar, tokenStream);
-    while (parser.Step(grammar));
+    //LR::Parser::Parser parser(grammar);
+    dfa.BeginParse(grammar, tokenStream);
+    while (dfa.Step(grammar));
     return 0;
 }

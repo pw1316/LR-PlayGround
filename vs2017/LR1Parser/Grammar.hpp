@@ -1,124 +1,66 @@
 #pragma once
 #include <stdafx.h>
 
-#include <list>
-#include <set>
-#include <string>
-#include <vector>
-
 namespace LR::Grammar
 {
-    enum class ElementType
-    {
-        State,
-        Token
-    };
-    enum class TokenType
-    {
-        TT_NONE,
-        TT_TOKEN_TERM,
-        TT_TOKEN_SYMB,
-        TT_START,
-        TT_TERMINAL,
-        TT_EPSILON
-    };
-    using StateId = unsigned int;
-    using TokenId = unsigned int;
-    using GrammarId = unsigned int;
-    struct ElementHeader
-    {
-        ElementType type;
-    };
-    struct ElementState
-    {
-        ElementHeader header;
-        StateId stateId;
-    };
-    struct ElementToken
-    {
-        ElementHeader header;
-        TokenId tokenId;
-    };
-    union Element
-    {
-        ElementHeader header;
-        ElementState state;
-        ElementToken token;
-    };
-    using TokenNameList = std::vector<std::string>;
-    using Production = std::vector<TokenId>;
-    using ProductionList = std::vector<Production>;
-    using TokenSet = std::set<TokenId>;
-    using TokenSetList = std::vector<TokenSet>;
-    using ParseStack = std::list<Element>;
-
     class Grammar
     {
     public:
         explicit Grammar(const std::string& fname);
-        TokenType GetTokenType(TokenId token) const
+
+        const Utils::TokenId NumTerminalToken() const
         {
-            if (token < NumTerminalToken())
-            {
-                return TokenType::TT_TOKEN_TERM;
-            }
-            if (token < NumToken())
-            {
-                return TokenType::TT_TOKEN_SYMB;
-            }
-            token -= NumToken();
-            if (token == 0U)
-            {
-                return TokenType::TT_START;
-            }
-            if (token == 1U)
-            {
-                return TokenType::TT_TERMINAL;
-            }
-            if (m_HasEmpty && token == 2U)
-            {
-                return TokenType::TT_EPSILON;
-            }
-            return TokenType::TT_NONE;
+            return static_cast<Utils::TokenId>(m_TerminalTokenNames.size());
         }
-        bool IsNone(TokenId token) const
+        const Utils::TokenId NumNonTerminalToken() const
         {
-            return GetTokenType(token) == TokenType::TT_NONE;
+            return static_cast<Utils::TokenId>(m_NonTerminalTokenNames.size());
         }
-        bool IsTerminalToken(TokenId token) const
+        const Utils::TokenId NumToken() const
         {
-            return GetTokenType(token) == TokenType::TT_TOKEN_TERM;
+            return NumTerminalToken() + NumNonTerminalToken();
         }
-        bool IsNonTerminalToken(TokenId token) const
+
+        Utils::TokenType GetTokenType(Utils::TokenId token) const;
+        const std::string& GetTokenName(Utils::TokenId token) const;
+        bool IsNone(Utils::TokenId token) const
         {
-            return GetTokenType(token) == TokenType::TT_TOKEN_SYMB;
+            return GetTokenType(token) == Utils::TokenType::TT_NONE;
         }
-        bool IsStart(TokenId token) const
+        bool IsTerminalToken(Utils::TokenId token) const
         {
-            return GetTokenType(token) == TokenType::TT_START;
+            return GetTokenType(token) == Utils::TokenType::TT_TOKEN_TERM;
         }
-        bool IsTerminal(TokenId token) const
+        bool IsNonTerminalToken(Utils::TokenId token) const
         {
-            return GetTokenType(token) == TokenType::TT_TERMINAL;
+            return GetTokenType(token) == Utils::TokenType::TT_TOKEN_SYMB;
         }
-        bool IsEpsilon(TokenId token) const
+        bool IsStart(Utils::TokenId token) const
         {
-            return GetTokenType(token) == TokenType::TT_EPSILON;
+            return GetTokenType(token) == Utils::TokenType::TT_START;
+        }
+        bool IsTerminal(Utils::TokenId token) const
+        {
+            return GetTokenType(token) == Utils::TokenType::TT_TERMINAL;
+        }
+        bool IsEpsilon(Utils::TokenId token) const
+        {
+            return GetTokenType(token) == Utils::TokenType::TT_EPSILON;
         }
 
         bool HasEpsilon() const
         {
             return m_HasEmpty;
         }
-        TokenId START() const
+        Utils::TokenId START() const
         {
             return NumToken();
         }
-        TokenId TERMINAL() const
+        Utils::TokenId TERMINAL() const
         {
             return NumToken() + 1U;
         }
-        TokenId EPSILON() const
+        Utils::TokenId EPSILON() const
         {
             /*
                 To check whether token is epsilon, use:
@@ -128,79 +70,25 @@ namespace LR::Grammar
             return NumToken() + 2U;
         }
 
-        const TokenNameList& TerminalTokenValues() const
+        const Utils::TokenNameList& TerminalTokenValues() const
         {
             return m_TerminalTokenValues;
         }
-        const ProductionList& G() const
+        const Utils::ProductionList& G() const
         {
             return m_G;
         }
-        const std::string& GetTokenName(TokenId token) const
-        {
-            if (IsTerminalToken(token))
-            {
-                return m_TerminalTokenNames[token];
-            }
-            if (IsNonTerminalToken(token))
-            {
-                return m_NonTerminalTokenNames[token - NumTerminalToken()];
-            }
-            if (IsStart(token))
-            {
-                return m_START;
-            }
-            if (IsTerminal(token))
-            {
-                return m_TERMINAL;
-            }
-            if (IsEpsilon(token))
-            {
-                return m_EPSILON;
-            }
-            return m_NONE;
-        }
-        const TokenId NumTerminalToken() const
-        {
-            return static_cast<TokenId>(m_TerminalTokenNames.size());
-        }
-        const TokenId NumNonTerminalToken() const
-        {
-            return static_cast<TokenId>(m_NonTerminalTokenNames.size());
-        }
-        const TokenId NumToken() const
-        {
-            return NumTerminalToken() + NumNonTerminalToken();
-        }
 
-        void DumpGrammar() const
-        {
-            GrammarId idx = 0U;
-            for (auto& production : m_G)
-            {
-                bool isLeft = true;
-                std::cout << "[GRAMMAR] " << std::setw(2) << idx++ << " ";
-                for (auto token : production)
-                {
-                    std::cout << GetTokenName(token) << " ";
-                    if (isLeft)
-                    {
-                        std::cout << "-> ";
-                    }
-                    isLeft = false;
-                }
-                std::cout << "\n";
-            }
-        }
+        void DumpGrammar() const;
     private:
         const std::string m_NONE = "";
         const std::string m_START = "!";
         const std::string m_TERMINAL = "$";
         const std::string m_EPSILON = "@";
         bool m_HasEmpty;
-        TokenNameList m_TerminalTokenNames;
-        TokenNameList m_TerminalTokenValues;
-        TokenNameList m_NonTerminalTokenNames;
-        ProductionList m_G;
+        Utils::TokenNameList m_TerminalTokenNames;
+        Utils::TokenNameList m_TerminalTokenValues;
+        Utils::TokenNameList m_NonTerminalTokenNames;
+        Utils::ProductionList m_G;
     };
 }
