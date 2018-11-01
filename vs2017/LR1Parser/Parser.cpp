@@ -68,6 +68,31 @@ namespace LR::Parser
             m_closure.insert(item);
         }
     }
+    void LRState::MergeLookAhead()
+    {
+        std::set<LR1Item> nclosure;
+        for (auto&& item : m_closure)
+        {
+            bool found = false;
+            for (auto&& nitem : nclosure)
+            {
+                if (nitem.item == item.item)
+                {
+                    auto nnitem = nitem;
+                    nnitem.lookAhead.insert(item.lookAhead.begin(), item.lookAhead.end());
+                    nclosure.erase(nitem);
+                    nclosure.insert(nnitem);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                nclosure.insert(item);
+            }
+        }
+        m_closure = std::move(nclosure);
+    }
 
     std::tuple<Utils::TokenSetList, Utils::TokenSetList> LRParser::FirstAndFollowSet(const Grammar::Grammar& grammar)
     {
@@ -189,7 +214,7 @@ namespace LR::Parser
 #pragma endregion
         return std::make_tuple(firstSet, followSet);
     }
-    LRParser::LRParser(const Grammar::Grammar& grammar):m_flag(DFA_FLAG::DFA_LR1), m_FFSet(FirstAndFollowSet(grammar))
+    LRParser::LRParser(const Grammar::Grammar& grammar) :m_flag(DFA_FLAG::DFA_LR1), m_FFSet(FirstAndFollowSet(grammar))
     {
         auto[firstSet, followSet] = m_FFSet;
         LRState initState;
@@ -301,6 +326,32 @@ namespace LR::Parser
             }
         }
         ofs << "```\n";
+    }
+    LRParser LRParser::DeGenerate(const Grammar::Grammar& grammar)
+    {
+        LRParser ret = LRParser(*this);
+        if (ret.m_flag == DFA_FLAG::DFA_LR1)
+        {
+            ret.m_table.clear();
+            for (auto&& state : ret.m_states)
+            {
+                state.MergeLookAhead();
+            }
+            // TODO Merge States with the same Core
+        }
+        else if (ret.m_flag == DFA_FLAG::DFA_LALR1)
+        {
+            // TODO Down to SLR1
+        }
+        else if (ret.m_flag == DFA_FLAG::DFA_SLR1)
+        {
+            // TODO Down to LR0
+        }
+        else if (ret.m_flag == DFA_FLAG::DFA_LR0)
+        {
+            // TODO No more
+        }
+        assert(false);
     }
     void LRParser::BeginParse(const Grammar::Grammar& grammar, const Utils::TokenStream& ts)
     {

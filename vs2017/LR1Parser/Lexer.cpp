@@ -32,7 +32,7 @@ namespace LR::Lexer
         }
         return ret;
     }
-    void Lexer::DumpTokenStream(const Grammar::Grammar & g, const Utils::TokenStream & ts)
+    void Lexer::DumpTokenStream(const Grammar::Grammar& g, const Utils::TokenStream& ts)
     {
         std::cout << "[INPUT] ";
         for (auto token : ts)

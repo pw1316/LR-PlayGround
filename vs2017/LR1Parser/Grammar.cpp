@@ -226,7 +226,7 @@ namespace LR::Grammar
         return m_NONE;
     }
 
-    void Grammar::DumpGrammar() const
+    void Grammar::Dump() const
     {
         Utils::GrammarId idx = 0U;
         for (auto&& production : m_G)

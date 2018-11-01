@@ -92,6 +92,7 @@ namespace LR::Parser
             m_closure.insert(item);
         }
         void Closure(const Grammar::Grammar& grammar, const Utils::TokenSetList& firstSet);
+        void MergeLookAhead();
         const std::set<LR1Item>& Items() const
         {
             return m_closure;
@@ -159,6 +160,7 @@ namespace LR::Parser
         static std::tuple<Utils::TokenSetList, Utils::TokenSetList> FirstAndFollowSet(const Grammar::Grammar& grammar);
         LRParser(const Grammar::Grammar& grammar);
         void Dump(const Grammar::Grammar& grammar);
+        LRParser DeGenerate(const Grammar::Grammar& grammar);
         void BeginParse(const Grammar::Grammar& grammar, const Utils::TokenStream& ts);
         bool Step(const Grammar::Grammar& grammar);
     private:
