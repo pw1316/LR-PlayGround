@@ -11,7 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Lexer.hpp" />
-    <ClInclude Include="Token.hpp" />
     <ClInclude Include="Parser.hpp" />
     <ClInclude Include="Grammar.hpp" />
     <ClInclude Include="Utils\Utils.hpp">

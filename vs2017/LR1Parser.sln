@@ -4,11 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.28010.2016
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LR1Parser", "LR1Parser\LR1Parser.vcxproj", "{E26FCA6B-90F7-4ADC-B52E-36C2DC301FAB}"
-	ProjectSection(ProjectDependencies) = postProject
-		{686B24A4-60D2-48AD-B316-CEEE37D42548} = {686B24A4-60D2-48AD-B316-CEEE37D42548}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TokenGen", "TokenGen\TokenGen.vcxproj", "{686B24A4-60D2-48AD-B316-CEEE37D42548}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,10 +15,6 @@ Global
 		{E26FCA6B-90F7-4ADC-B52E-36C2DC301FAB}.Debug|x64.Build.0 = Debug|x64
 		{E26FCA6B-90F7-4ADC-B52E-36C2DC301FAB}.Release|x64.ActiveCfg = Release|x64
 		{E26FCA6B-90F7-4ADC-B52E-36C2DC301FAB}.Release|x64.Build.0 = Release|x64
-		{686B24A4-60D2-48AD-B316-CEEE37D42548}.Debug|x64.ActiveCfg = Debug|x64
-		{686B24A4-60D2-48AD-B316-CEEE37D42548}.Debug|x64.Build.0 = Debug|x64
-		{686B24A4-60D2-48AD-B316-CEEE37D42548}.Release|x64.ActiveCfg = Release|x64
-		{686B24A4-60D2-48AD-B316-CEEE37D42548}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
