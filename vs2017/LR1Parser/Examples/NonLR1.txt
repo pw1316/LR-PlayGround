@@ -1,0 +1,11 @@
+# Symbols of terminals
+# [token] [regex]
+%token%
+a a
+
+# Grammars
+# [Left] [Right1] [Right2] ...
+# "@" is used for empty symbol
+%grammar%
+A a A a
+A @
