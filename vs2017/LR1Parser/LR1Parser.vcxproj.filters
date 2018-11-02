@@ -24,7 +24,4 @@
     <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="Parser.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="token.txt" />
-  </ItemGroup>
 </Project>

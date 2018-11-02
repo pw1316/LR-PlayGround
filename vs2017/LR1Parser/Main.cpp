@@ -6,23 +6,29 @@
 
 #include <string>
 
-constexpr auto GRAMMAR_FILE = "token.txt";
-constexpr auto INPUT_STRING = "(1*(4+5+2)-3)*(6+8)";
-
-int main()
+int main(int argc, char* argv[])
 {
-    LR::Grammar grammar(GRAMMAR_FILE);
+    if (argc < 3)
+    {
+        std::cout << "USAGE: LR1Parser <grammar-file> <input-string>\n";
+        return 1;
+    }
+    LR::Grammar grammar(argv[1]);
     grammar.Dump();
 
     auto lexer = LR::Lexer(grammar);
-    if (!lexer.SetInput(INPUT_STRING))
+    auto parser = LR::LRParser(grammar);
+    if (!lexer.SetInput(argv[2]))
     {
-        std::cout << "Not valid input string: " << INPUT_STRING << "\n";
-        return 1;
+        std::cout << "Not valid input string: " << argv[2] << "\n";
+        return 2;
+    }
+    if (!parser.Valid())
+    {
+        std::cout << "Not LR(1) language!!!\n";
+        return 3;
     }
     lexer.Dump();
-
-    auto parser = LR::LRParser(grammar);
     parser.Dump();
     parser.BeginParse(lexer.TokenStream());
     while (parser.Step());

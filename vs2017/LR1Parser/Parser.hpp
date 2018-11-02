@@ -89,7 +89,6 @@ namespace LR
             m_closure.insert(item);
         }
         void Closure(const Grammar& grammar, const Utils::TokenSetList& firstSet);
-        void MergeLookAhead();
         const std::set<LR1Item>& Items() const
         {
             return m_closure;
@@ -107,6 +106,7 @@ namespace LR
             return m_closure > rhs.m_closure;
         }
     private:
+        void MergeLookAhead();
         std::set<LR1Item> m_closure;
     };
     using StateList = std::vector<LRState>;
@@ -117,6 +117,7 @@ namespace LR
         DFA_SLR1,
         DFA_LALR1,
         DFA_LR1,
+        DFA_HIGHER
     };
     using Edge = std::map<Utils::TokenId, Utils::StateId>;
     using EdgeList = std::vector<Edge>;
@@ -143,6 +144,10 @@ namespace LR
     public:
         LRParser(const Grammar& grammar);
         void Dump();
+        bool Valid()
+        {
+            return m_flag < DFA_FLAG::DFA_HIGHER;
+        }
         LRParser DeGenerate();
         void BeginParse(const Utils::TokenStream& ts);
         bool Step();

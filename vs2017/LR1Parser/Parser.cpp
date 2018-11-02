@@ -67,6 +67,7 @@ namespace LR
             }
             m_closure.insert(item);
         }
+        MergeLookAhead();
     }
     void LRState::MergeLookAhead()
     {
@@ -167,11 +168,22 @@ namespace LR
     }
     LRParser LRParser::DeGenerate()
     {
+        if (m_flag == DFA_FLAG::DFA_LR1)
+        {
+            LRParser lalr(*this);
+            return lalr;
+        }
         return *this;
     }
     void LRParser::BeginParse(const Utils::TokenStream& ts)
     {
         m_parseStack.clear();
+        if (m_states.empty())
+        {
+            assert(m_edges.empty());
+            assert(m_table.empty());
+            return;
+        }
         Element ele;
         ele.type = ElementType::State;
         ele.sId = 0U;
@@ -401,14 +413,17 @@ namespace LR
             }
             for (auto& item : m_states[sId].Items())
             {
-                if (item.item.dotPos == m_grammar.G()[item.item.grammarId].size())
+                if (item.item.dotPos == m_grammar.G()[item.item.grammarId].size() || m_grammar.IsEpsilon(m_grammar.G()[item.item.grammarId][item.item.dotPos]))
                 {
                     for (auto token : item.lookAhead)
                     {
+                        /* Conflict */
                         if (m_table[sId][token] != nullptr)
                         {
-                            std::cout << "[ERR] Not LR(1) language!!!\n";
+                            m_states.clear();
+                            m_edges.clear();
                             m_table.clear();
+                            m_flag = DFA_FLAG::DFA_HIGHER;
                             return;
                         }
                         m_table[sId][token] = std::bind(&LRParser::m_Reduce, this, item.item.grammarId);
