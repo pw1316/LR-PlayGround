@@ -160,7 +160,7 @@ namespace LR
         {
             for (const auto& edge : m_edges[sId])
             {
-                ofs << sId << "--" << m_grammar.GetTokenName(edge.first) << "-->" << edge.second << "\n";
+                ofs << sId << "--\"" << m_grammar.GetTokenName(edge.first) << "\"-->" << edge.second << "\n";
             }
         }
         ofs << "```\n";
