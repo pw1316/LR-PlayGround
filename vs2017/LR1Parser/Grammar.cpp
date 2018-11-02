@@ -7,7 +7,7 @@
 #include <map>
 #include <sstream>
 
-namespace LR::Grammar
+namespace LR
 {
     Grammar::Grammar(const std::string& fname)
     {

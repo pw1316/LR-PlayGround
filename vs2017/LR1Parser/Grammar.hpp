@@ -1,7 +1,7 @@
 #pragma once
 #include <stdafx.h>
 
-namespace LR::Grammar
+namespace LR
 {
     class Grammar
     {
@@ -79,7 +79,7 @@ namespace LR::Grammar
             return m_G;
         }
 
-        void DumpGrammar() const;
+        void Dump() const;
     private:
         const std::string m_NONE = "";
         const std::string m_START = "!";

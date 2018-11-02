@@ -1,6 +1,7 @@
 #pragma once
 #include <list>
 #include <set>
+#include <string>
 #include <vector>
 
 namespace LR::Utils
@@ -17,8 +18,14 @@ namespace LR::Utils
         TT_EPSILON,
         TT_TOTAL,
     };
+    struct Token
+    {
+        Token(TokenId tId, const std::string& tValue) : id(tId), value(tValue) {}
+        TokenId id;
+        std::string value;
+    };
     using TokenNameList = std::vector<std::string>;
-    using TokenStream = std::list<TokenId>;
+    using TokenStream = std::list<Token>;
     using TokenSet = std::set<TokenId>;
     using TokenSetList = std::vector<TokenSet>;
 

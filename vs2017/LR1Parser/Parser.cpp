@@ -6,9 +6,9 @@
 #include <queue>
 #include <string>
 
-namespace LR::Parser
+namespace LR
 {
-    void LRState::Closure(const Grammar::Grammar& grammar, const Utils::TokenSetList& firstSet)
+    void LRState::Closure(const Grammar& grammar, const Utils::TokenSetList& firstSet)
     {
         std::queue<LR1Item> BFS;
         for (auto&& item : m_closure)
@@ -94,10 +94,115 @@ namespace LR::Parser
         m_closure = std::move(nclosure);
     }
 
-    std::tuple<Utils::TokenSetList, Utils::TokenSetList> LRParser::FirstAndFollowSet(const Grammar::Grammar& grammar)
+    LRParser::LRParser(const Grammar& grammar) :m_grammar(grammar), m_flag(DFA_FLAG::DFA_LR1), m_FFSet(FirstAndFollowSet())
+    {
+        m_BuildDFA();
+        m_BuildTransformTable();
+    }
+    void LRParser::Dump()
+    {
+        auto[firstSet, followSet] = m_FFSet;
+        std::cout << "First/Follow Set:\n";
+        for (LR::Utils::TokenId i = 0U; i < static_cast<LR::Utils::TokenId>(m_grammar.NumToken()) + 2U; ++i)
+        {
+            std::cout << "  " << m_grammar.GetTokenName(i) << ": {";
+            for (auto token : firstSet[i])
+            {
+                std::cout << m_grammar.GetTokenName(token) << ",";
+            }
+            std::cout << "} {";
+            for (auto token : followSet[i])
+            {
+                std::cout << m_grammar.GetTokenName(token) << ",";
+            }
+            std::cout << "}\n";
+        }
+        std::ofstream ofs("graph.md");
+        ofs << "```mermaid\n";
+        ofs << "graph LR\n";
+        Utils::StateId idx = 0U;
+        for (auto&& state : m_states)
+        {
+            ofs << idx << "(\"";
+            for (auto& item : state.Items())
+            {
+                bool isLeft = true;
+                for (size_t tId = 0; tId < m_grammar.G()[item.item.grammarId].size(); ++tId)
+                {
+                    auto token = m_grammar.G()[item.item.grammarId][tId];
+                    if (item.item.dotPos == static_cast<Utils::TokenId>(tId))
+                    {
+                        ofs << ". ";
+                    }
+                    ofs << m_grammar.GetTokenName(token) << " ";
+                    if (isLeft)
+                    {
+                        ofs << "-> ";
+                    }
+                    isLeft = false;
+                }
+                if (item.item.dotPos == static_cast<Utils::TokenId>(m_grammar.G()[item.item.grammarId].size()))
+                {
+                    ofs << ". ";
+                }
+                ofs << "{";
+                for (auto lah : item.lookAhead)
+                {
+                    ofs << m_grammar.GetTokenName(lah) << ",";
+                }
+                ofs << "}";
+                ofs << "<br />";
+            }
+            ofs << "\")\n";
+            ++idx;
+        }
+        for (size_t sId = 0; sId < m_edges.size(); ++sId)
+        {
+            for (const auto& edge : m_edges[sId])
+            {
+                ofs << sId << "--" << m_grammar.GetTokenName(edge.first) << "-->" << edge.second << "\n";
+            }
+        }
+        ofs << "```\n";
+    }
+    LRParser LRParser::DeGenerate()
+    {
+        return *this;
+    }
+    void LRParser::BeginParse(const Utils::TokenStream& ts)
+    {
+        m_parseStack.clear();
+        Element ele;
+        ele.type = ElementType::State;
+        ele.sId = 0U;
+        m_parseStack.push_back(ele);
+
+        m_tokenStream = ts;
+        if (m_tokenStream.back().id != m_grammar.TERMINAL())
+        {
+            auto tId = m_grammar.TERMINAL();
+            m_tokenStream.emplace_back(tId, m_grammar.GetTokenName(tId));
+        }
+    }
+    bool LRParser::Step()
+    {
+        if (m_tokenStream.empty())
+        {
+            return false;
+        }
+        if (m_tokenStream.front().id == m_grammar.START())
+        {
+            std::cout << "[PARSE] DONE.\n";
+            return false;
+        }
+        auto token = m_tokenStream.front();
+        m_table[m_parseStack.back().sId][token.id]();
+        return true;
+    }
+    std::tuple<Utils::TokenSetList, Utils::TokenSetList> LRParser::FirstAndFollowSet()
     {
         /* All Tokens & START & TERMINAL */
-        const auto setSize = grammar.NumToken() + 2U;
+        const auto setSize = m_grammar.NumToken() + 2U;
         Utils::TokenSetList firstSet(setSize);
         Utils::TokenSetList followSet(setSize);
 
@@ -105,7 +210,7 @@ namespace LR::Parser
         /* Terminal's first set only contains the terminal itself */
         for (Utils::TokenId token = 0U; token < setSize; ++token)
         {
-            if (grammar.IsTerminalToken(token) || grammar.IsTerminal(token))
+            if (m_grammar.IsTerminalToken(token) || m_grammar.IsTerminal(token))
             {
                 firstSet[token].insert(token);
             }
@@ -115,7 +220,7 @@ namespace LR::Parser
         while (isDirty)
         {
             isDirty = false;
-            for (auto&& production : grammar.G())
+            for (auto&& production : m_grammar.G())
             {
                 assert(production.size() > 1U);
                 size_t idx = 1U;
@@ -123,7 +228,7 @@ namespace LR::Parser
                 bool hasEpsilon = true;
                 while (idx < production.size())
                 {
-                    if (grammar.IsEpsilon(production[idx]))
+                    if (m_grammar.IsEpsilon(production[idx]))
                     {
                         /* Epsilon must be "E -> epsilon" */
                         assert(production.size() == 2U);
@@ -132,7 +237,7 @@ namespace LR::Parser
                     bool keepGoing = false;
                     for (auto&& token : firstSet[production[idx]])
                     {
-                        if (!grammar.IsEpsilon(token))
+                        if (!m_grammar.IsEpsilon(token))
                         {
                             firstSet[production[0]].insert(token);
                         }
@@ -155,7 +260,7 @@ namespace LR::Parser
                 }
                 if (hasEpsilon)
                 {
-                    firstSet[production[0]].insert(grammar.EPSILON());
+                    firstSet[production[0]].insert(m_grammar.EPSILON());
                 }
                 isDirty |= oldSize != firstSet[production[0]].size();
             }
@@ -164,28 +269,28 @@ namespace LR::Parser
 
 #pragma region FollowSet
         /* First, $ is in START's Follow Set */
-        followSet[grammar.START()].insert(grammar.TERMINAL());
+        followSet[m_grammar.START()].insert(m_grammar.TERMINAL());
 
         /* Loop until Follow Sets no longer change */
         isDirty = true;
         while (isDirty)
         {
             isDirty = false;
-            for (auto&& production : grammar.G())
+            for (auto&& production : m_grammar.G())
             {
                 assert(production.size() > 1U);
                 size_t idx = production.size() - 1U;
                 while (idx > 0U)
                 {
-                    if (!grammar.IsNonTerminalToken(production[idx]))
+                    if (!m_grammar.IsNonTerminalToken(production[idx]))
                     {
                         break;
                     }
-                    assert(grammar.IsNonTerminalToken(production[0]) || grammar.IsStart(production[0]));
+                    assert(m_grammar.IsNonTerminalToken(production[0]) || m_grammar.IsStart(production[0]));
                     size_t oldSize = followSet[production[idx]].size();
                     followSet[production[idx]].insert(followSet[production[0]].begin(), followSet[production[0]].end());
                     isDirty |= oldSize != followSet[production[idx]].size();
-                    if (grammar.HasEpsilon() && firstSet[production[idx]].find(grammar.EPSILON()) != firstSet[production[idx]].end())
+                    if (m_grammar.HasEpsilon() && firstSet[production[idx]].find(m_grammar.EPSILON()) != firstSet[production[idx]].end())
                     {
                         --idx;
                     }
@@ -196,12 +301,12 @@ namespace LR::Parser
                 }
                 for (idx = 1; idx < production.size() - 1U; ++idx)
                 {
-                    if (grammar.IsNonTerminalToken(production[idx]))
+                    if (m_grammar.IsNonTerminalToken(production[idx]))
                     {
                         size_t oldSize = followSet[production[idx]].size();
                         for (auto&& token : firstSet[production[idx + 1]])
                         {
-                            if (!grammar.IsEpsilon(token))
+                            if (!m_grammar.IsEpsilon(token))
                             {
                                 followSet[production[idx]].insert(token);
                             }
@@ -214,20 +319,22 @@ namespace LR::Parser
 #pragma endregion
         return std::make_tuple(firstSet, followSet);
     }
-    LRParser::LRParser(const Grammar::Grammar& grammar) :m_flag(DFA_FLAG::DFA_LR1), m_FFSet(FirstAndFollowSet(grammar))
+    void LRParser::m_BuildDFA()
     {
+        m_states.clear();
+        m_edges.clear();
         auto[firstSet, followSet] = m_FFSet;
         LRState initState;
-        for (Utils::GrammarId gId = 0U; gId < static_cast<Utils::GrammarId>(grammar.G().size()); ++gId)
+        for (Utils::GrammarId gId = 0U; gId < static_cast<Utils::GrammarId>(m_grammar.G().size()); ++gId)
         {
-            if (grammar.IsStart(grammar.G()[gId][0]))
+            if (m_grammar.IsStart(m_grammar.G()[gId][0]))
             {
-                LR1Item item(gId, 1U, { grammar.TERMINAL() });
+                LR1Item item(gId, 1U, { m_grammar.TERMINAL() });
                 initState.Add(item);
             }
         }
         assert(!initState.Empty());
-        initState.Closure(grammar, firstSet);
+        initState.Closure(m_grammar, firstSet);
 
         m_states.push_back(initState);
         m_edges.emplace_back();
@@ -242,9 +349,9 @@ namespace LR::Parser
             std::set<Utils::TokenId> possibleEdges;
             for (auto&& curItem : m_states[curStateId].Items())
             {
-                if (curItem.item.dotPos < grammar.G()[curItem.item.grammarId].size() && !grammar.IsEpsilon(grammar.G()[curItem.item.grammarId][curItem.item.dotPos]))
+                if (curItem.item.dotPos < m_grammar.G()[curItem.item.grammarId].size() && !m_grammar.IsEpsilon(m_grammar.G()[curItem.item.grammarId][curItem.item.dotPos]))
                 {
-                    possibleEdges.insert(grammar.G()[curItem.item.grammarId][curItem.item.dotPos]);
+                    possibleEdges.insert(m_grammar.G()[curItem.item.grammarId][curItem.item.dotPos]);
                 }
             }
 
@@ -253,13 +360,13 @@ namespace LR::Parser
                 LRState nextState;
                 for (auto&& curItem : m_states[curStateId].Items())
                 {
-                    if (curItem.item.dotPos < grammar.G()[curItem.item.grammarId].size() && grammar.G()[curItem.item.grammarId][curItem.item.dotPos] == edge)
+                    if (curItem.item.dotPos < m_grammar.G()[curItem.item.grammarId].size() && m_grammar.G()[curItem.item.grammarId][curItem.item.dotPos] == edge)
                     {
                         LR1Item nextItem(curItem.item.grammarId, curItem.item.dotPos + 1, curItem.lookAhead);
                         nextState.Add(nextItem);
                     }
                 }
-                nextState.Closure(grammar, firstSet);
+                nextState.Closure(m_grammar, firstSet);
                 if (visited.find(nextState) != visited.end())
                 {
                     m_edges[curStateId][edge] = visited[nextState];
@@ -275,132 +382,26 @@ namespace LR::Parser
                 }
             }
         }
-        m_BuildTransformTable(grammar);
     }
-    void LRParser::Dump(const Grammar::Grammar & grammar)
+    void LRParser::m_BuildTransformTable()
     {
-        std::ofstream ofs("graph.md");
-        ofs << "```mermaid\n";
-        ofs << "graph LR\n";
-        Utils::StateId idx = 0U;
-        for (auto&& state : m_states)
-        {
-            ofs << idx << "(\"";
-            for (auto& item : state.Items())
-            {
-                bool isLeft = true;
-                for (size_t tId = 0; tId < grammar.G()[item.item.grammarId].size(); ++tId)
-                {
-                    auto token = grammar.G()[item.item.grammarId][tId];
-                    if (item.item.dotPos == static_cast<Utils::TokenId>(tId))
-                    {
-                        ofs << ". ";
-                    }
-                    ofs << grammar.GetTokenName(token) << " ";
-                    if (isLeft)
-                    {
-                        ofs << "-> ";
-                    }
-                    isLeft = false;
-                }
-                if (item.item.dotPos == static_cast<Utils::TokenId>(grammar.G()[item.item.grammarId].size()))
-                {
-                    ofs << ". ";
-                }
-                ofs << "{";
-                for (auto lah : item.lookAhead)
-                {
-                    ofs << grammar.GetTokenName(lah) << ",";
-                }
-                ofs << "}";
-                ofs << "<br />";
-            }
-            ofs << "\")\n";
-            ++idx;
-        }
-        for (size_t sId = 0; sId < m_edges.size(); ++sId)
-        {
-            for (const auto& edge : m_edges[sId])
-            {
-                ofs << sId << "--" << grammar.GetTokenName(edge.first) << "-->" << edge.second << "\n";
-            }
-        }
-        ofs << "```\n";
-    }
-    LRParser LRParser::DeGenerate(const Grammar::Grammar& grammar)
-    {
-        LRParser ret = LRParser(*this);
-        if (ret.m_flag == DFA_FLAG::DFA_LR1)
-        {
-            ret.m_table.clear();
-            for (auto&& state : ret.m_states)
-            {
-                state.MergeLookAhead();
-            }
-            // TODO Merge States with the same Core
-        }
-        else if (ret.m_flag == DFA_FLAG::DFA_LALR1)
-        {
-            // TODO Down to SLR1
-        }
-        else if (ret.m_flag == DFA_FLAG::DFA_SLR1)
-        {
-            // TODO Down to LR0
-        }
-        else if (ret.m_flag == DFA_FLAG::DFA_LR0)
-        {
-            // TODO No more
-        }
-        assert(false);
-    }
-    void LRParser::BeginParse(const Grammar::Grammar& grammar, const Utils::TokenStream& ts)
-    {
-        m_parseStack.clear();
-        Element ele;
-        ele.state.header.type = ElementType::State;
-        ele.state.stateId = 0U;
-        m_parseStack.push_back(ele);
-
-        m_tokenStream = ts;
-        if (m_tokenStream.back() != grammar.TERMINAL())
-        {
-            m_tokenStream.push_back(grammar.TERMINAL());
-        }
-    }
-    bool LRParser::Step(const Grammar::Grammar& grammar)
-    {
-        if (m_tokenStream.empty())
-        {
-            return false;
-        }
-        if (m_tokenStream.front() == grammar.START())
-        {
-            std::cout << "[PARSE] DONE.\n";
-            return false;
-        }
-        auto token = m_tokenStream.front();
-        m_table[m_parseStack.back().state.stateId][token](grammar);
-        return true;
-    }
-    void LRParser::m_BuildTransformTable(const Grammar::Grammar& grammar)
-    {
-        m_table = TransformTable(m_states.size(), TransformCallBackList(grammar.NumToken() + 2U, nullptr));
+        m_table = TransformTable(m_states.size(), TransformCallBackList(m_grammar.NumToken() + 2U, nullptr));
         for (Utils::StateId sId = 0U; sId < static_cast<Utils::StateId>(m_states.size()); ++sId)
         {
             for (auto& edge : m_edges[sId])
             {
-                if (grammar.IsTerminalToken(edge.first) || grammar.IsTerminal(edge.first))
+                if (m_grammar.IsTerminalToken(edge.first) || m_grammar.IsTerminal(edge.first))
                 {
-                    m_table[sId][edge.first] = std::bind(&LRParser::m_Shift, this, std::placeholders::_1, edge.second);
+                    m_table[sId][edge.first] = std::bind(&LRParser::m_Shift, this, edge.second);
                 }
-                else if (grammar.IsNonTerminalToken(edge.first) || grammar.IsStart(edge.first))
+                else if (m_grammar.IsNonTerminalToken(edge.first) || m_grammar.IsStart(edge.first))
                 {
-                    m_table[sId][edge.first] = std::bind(&LRParser::m_Goto, this, std::placeholders::_1, edge.second);
+                    m_table[sId][edge.first] = std::bind(&LRParser::m_Goto, this, edge.second);
                 }
             }
             for (auto& item : m_states[sId].Items())
             {
-                if (item.item.dotPos == grammar.G()[item.item.grammarId].size())
+                if (item.item.dotPos == m_grammar.G()[item.item.grammarId].size())
                 {
                     for (auto token : item.lookAhead)
                     {
@@ -410,50 +411,50 @@ namespace LR::Parser
                             m_table.clear();
                             return;
                         }
-                        m_table[sId][token] = std::bind(&LRParser::m_Reduce, this, std::placeholders::_1, item.item.grammarId);
+                        m_table[sId][token] = std::bind(&LRParser::m_Reduce, this, item.item.grammarId);
                     }
                 }
             }
         }
     }
-    bool LRParser::m_Shift(const Grammar::Grammar& grammar, Utils::StateId sId)
+    bool LRParser::m_Shift(Utils::StateId sId)
     {
-        std::cout << "[PARSE] SHIFT " << grammar.GetTokenName(m_tokenStream.front()) << " to " << sId << "\n";
+        std::cout << "[PARSE] SHIFT " << m_tokenStream.front().value << " to state " << sId << "\n";
         auto token = m_tokenStream.front();
         m_tokenStream.pop_front();
         Element ele;
-        ele.token.header.type = ElementType::Token;
-        ele.token.tokenId = token;
+        ele.type = ElementType::Token;
+        ele.token = token;
         m_parseStack.push_back(ele);
 
-        ele.state.header.type = ElementType::State;
-        ele.state.stateId = sId;
+        ele.type = ElementType::State;
+        ele.sId = sId;
         m_parseStack.push_back(ele);
         return true;
     }
-    bool LRParser::m_Goto(const Grammar::Grammar& grammar, Utils::StateId sId)
+    bool LRParser::m_Goto(Utils::StateId sId)
     {
-        std::cout << "[PARSE] GOTO " << sId << "\n";
+        std::cout << "[PARSE] GOTO state " << sId << "\n";
         auto token = m_tokenStream.front();
         m_tokenStream.pop_front();
         Element ele;
-        ele.token.header.type = ElementType::Token;
-        ele.token.tokenId = token;
+        ele.type = ElementType::Token;
+        ele.token = token;
         m_parseStack.push_back(ele);
 
-        ele.state.header.type = ElementType::State;
-        ele.state.stateId = sId;
+        ele.type = ElementType::State;
+        ele.sId = sId;
         m_parseStack.push_back(ele);
         return true;
     }
-    bool LRParser::m_Reduce(const Grammar::Grammar& grammar, Utils::GrammarId gId)
+    bool LRParser::m_Reduce(Utils::GrammarId gId)
     {
         std::cout << "[PARSE] REDUCE ";
         {
             bool isLeft = true;
-            for (auto token : grammar.G()[gId])
+            for (auto token : m_grammar.G()[gId])
             {
-                std::cout << grammar.GetTokenName(token) << " ";
+                std::cout << m_grammar.GetTokenName(token) << " ";
                 if (isLeft)
                 {
                     std::cout << "-> ";
@@ -462,14 +463,14 @@ namespace LR::Parser
             }
             std::cout << "\n";
         }
-        auto &g = grammar.G()[gId];
+        auto &g = m_grammar.G()[gId];
         for (size_t i = 1; i < g.size(); ++i)
         {
             m_parseStack.pop_back();
             m_parseStack.pop_back();
         }
 
-        m_tokenStream.push_front(g[0]);
+        m_tokenStream.emplace_front(g[0], m_grammar.GetTokenName(g[0]));
         return true;
     }
 }

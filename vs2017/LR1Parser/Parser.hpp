@@ -4,13 +4,10 @@
 #include <functional>
 #include <map>
 
-namespace LR::Grammar
+namespace LR
 {
     class Grammar;
-}
 
-namespace LR::Parser
-{
     struct LR0Item
     {
         LR0Item() : grammarId(0U), dotPos(1U) {}
@@ -47,7 +44,7 @@ namespace LR::Parser
     {
         LR1Item() {}
         LR1Item(Utils::GrammarId gId, Utils::TokenId dPos, const std::initializer_list<Utils::TokenId>& lh) : item(gId, dPos), lookAhead(lh) {}
-        LR1Item(Utils::GrammarId gId, Utils::TokenId dPos, const std::set<Utils::TokenId>& lh) : item(gId, dPos), lookAhead(lh) {}
+        LR1Item(Utils::GrammarId gId, Utils::TokenId dPos, const Utils::TokenSet& lh) : item(gId, dPos), lookAhead(lh) {}
         bool operator==(const LR1Item& rhs) const
         {
             return item == rhs.item && lookAhead == rhs.lookAhead;
@@ -91,7 +88,7 @@ namespace LR::Parser
         {
             m_closure.insert(item);
         }
-        void Closure(const Grammar::Grammar& grammar, const Utils::TokenSetList& firstSet);
+        void Closure(const Grammar& grammar, const Utils::TokenSetList& firstSet);
         void MergeLookAhead();
         const std::set<LR1Item>& Items() const
         {
@@ -123,7 +120,7 @@ namespace LR::Parser
     };
     using Edge = std::map<Utils::TokenId, Utils::StateId>;
     using EdgeList = std::vector<Edge>;
-    using TransformCallBack = std::function<bool(const Grammar::Grammar&)>;
+    using TransformCallBack = std::function<bool()>;
     using TransformCallBackList = std::vector<TransformCallBack>;
     using TransformTable = std::vector<TransformCallBackList>;
 
@@ -132,43 +129,32 @@ namespace LR::Parser
         State,
         Token
     };
-    struct ElementHeader
+    struct Element
     {
+        Element() :type(ElementType::State), sId(0U), token(0U, "") {}
         ElementType type;
-    };
-    struct ElementState
-    {
-        ElementHeader header;
-        Utils::StateId stateId;
-    };
-    struct ElementToken
-    {
-        ElementHeader header;
-        Utils::TokenId tokenId;
-    };
-    union Element
-    {
-        ElementHeader header;
-        ElementState state;
-        ElementToken token;
+        Utils::StateId sId;
+        Utils::Token token;
     };
     using ParseStack = std::list<Element>;
 
     class LRParser
     {
     public:
-        static std::tuple<Utils::TokenSetList, Utils::TokenSetList> FirstAndFollowSet(const Grammar::Grammar& grammar);
-        LRParser(const Grammar::Grammar& grammar);
-        void Dump(const Grammar::Grammar& grammar);
-        LRParser DeGenerate(const Grammar::Grammar& grammar);
-        void BeginParse(const Grammar::Grammar& grammar, const Utils::TokenStream& ts);
-        bool Step(const Grammar::Grammar& grammar);
+        LRParser(const Grammar& grammar);
+        void Dump();
+        LRParser DeGenerate();
+        void BeginParse(const Utils::TokenStream& ts);
+        bool Step();
     private:
-        void m_BuildTransformTable(const Grammar::Grammar& grammar);
-        bool m_Shift(const Grammar::Grammar& grammar, Utils::StateId sId);
-        bool m_Goto(const Grammar::Grammar& grammar, Utils::StateId sId);
-        bool m_Reduce(const Grammar::Grammar& grammar, Utils::GrammarId gId);
+        std::tuple<Utils::TokenSetList, Utils::TokenSetList> FirstAndFollowSet();
+        void m_BuildDFA();
+        void m_BuildTransformTable();
+        bool m_Shift(Utils::StateId sId);
+        bool m_Goto(Utils::StateId sId);
+        bool m_Reduce(Utils::GrammarId gId);
 
+        const Grammar& m_grammar;
         DFA_FLAG m_flag;
         std::tuple<Utils::TokenSetList, Utils::TokenSetList> m_FFSet;
         StateList m_states;

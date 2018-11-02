@@ -1,17 +1,22 @@
 #pragma once
 #include <stdafx.h>
 
-namespace LR::Grammar
+namespace LR
 {
     class Grammar;
-}
 
-namespace LR::Lexer
-{
     class Lexer
     {
     public:
-        static Utils::TokenStream Lex(const Grammar::Grammar& g, const std::string& input);
-        static void DumpTokenStream(const Grammar::Grammar& g, const Utils::TokenStream& ts);
+        Lexer(const Grammar& g) :m_g(g) {}
+        bool SetInput(const std::string& input);
+        const Utils::TokenStream& TokenStream() const
+        {
+            return m_ts;
+        }
+        void Dump();
+    private:
+        const Grammar& m_g;
+        Utils::TokenStream m_ts;
     };
 }

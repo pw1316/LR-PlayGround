@@ -4,21 +4,21 @@
 
 #include <regex>
 
-namespace LR::Lexer
+namespace LR
 {
-    Utils::TokenStream LR::Lexer::Lexer::Lex(const Grammar::Grammar& g, const std::string& input)
+    bool Lexer::SetInput(const std::string& input)
     {
-        Utils::TokenStream ret;
+        Utils::TokenStream nts;
         auto iter = input.begin();
         while (iter != input.end())
         {
             bool isFailed = true;
-            for (unsigned int tId = 0; tId < g.NumTerminalToken(); ++tId)
+            for (Utils::TokenId tId = 0U; tId < m_g.NumTerminalToken(); ++tId)
             {
                 std::smatch ms;
-                if (std::regex_search(iter, input.end(), ms, std::regex(g.TerminalTokenValues()[tId]), std::regex_constants::match_continuous))
+                if (std::regex_search(iter, input.end(), ms, std::regex(m_g.TerminalTokenValues()[tId]), std::regex_constants::match_continuous))
                 {
-                    ret.push_back(tId);
+                    nts.emplace_back(tId, ms[0].str());
                     iter += ms[0].length();
                     isFailed = false;
                     break;
@@ -27,17 +27,18 @@ namespace LR::Lexer
             /* Failed */
             if (isFailed)
             {
-                return Utils::TokenStream();
+                return false;
             }
         }
-        return ret;
+        m_ts = std::move(nts);
+        return true;
     }
-    void Lexer::DumpTokenStream(const Grammar::Grammar& g, const Utils::TokenStream& ts)
+    void Lexer::Dump()
     {
         std::cout << "[INPUT] ";
-        for (auto token : ts)
+        for (auto token : m_ts)
         {
-            std::cout << g.GetTokenName(token) << " ";
+            std::cout << token.value << " ";
         }
         std::cout << "\n";
     }

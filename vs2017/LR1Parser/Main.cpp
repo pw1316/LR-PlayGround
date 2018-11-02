@@ -1,44 +1,30 @@
 #include <stdafx.h>
 
-#include <Lexer.hpp>
 #include <Grammar.hpp>
+#include <Lexer.hpp>
 #include <Parser.hpp>
 
 #include <string>
 
+constexpr auto GRAMMAR_FILE = "token.txt";
+constexpr auto INPUT_STRING = "(1*(4+5+2)-3)*(6+8)";
+
 int main()
 {
-    LR::Grammar::Grammar grammar("token.txt");
+    LR::Grammar grammar(GRAMMAR_FILE);
     grammar.Dump();
 
-    auto tokenStream = LR::Lexer::Lexer::Lex(grammar, "(1*(4+5+2)-3)*(6+8)");
-    LR::Lexer::Lexer::DumpTokenStream(grammar, tokenStream);
-
-    auto ffSet = LR::Parser::LRParser::FirstAndFollowSet(grammar);
-    auto[firstSet, followSet] = ffSet;
-
-    auto dfa = LR::Parser::LRParser(grammar);
-
-    /* SETS */
-    std::cout << "First/Follow Set:\n";
-    for (LR::Utils::TokenId i = 0U; i < static_cast<LR::Utils::TokenId>(grammar.NumToken()) + 2U; ++i)
+    auto lexer = LR::Lexer(grammar);
+    if (!lexer.SetInput(INPUT_STRING))
     {
-        std::cout << "  " << grammar.GetTokenName(i) << ": {";
-        for (auto token : firstSet[i])
-        {
-            std::cout << grammar.GetTokenName(token) << ",";
-        }
-        std::cout << "} {";
-        for (auto token : followSet[i])
-        {
-            std::cout << grammar.GetTokenName(token) << ",";
-        }
-        std::cout << "}\n";
+        std::cout << "Not valid input string: " << INPUT_STRING << "\n";
+        return 1;
     }
+    lexer.Dump();
 
-    dfa.Dump(grammar);
-
-    dfa.BeginParse(grammar, tokenStream);
-    while (dfa.Step(grammar));
+    auto parser = LR::LRParser(grammar);
+    parser.Dump();
+    parser.BeginParse(lexer.TokenStream());
+    while (parser.Step());
     return 0;
 }
