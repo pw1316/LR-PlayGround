@@ -208,6 +208,12 @@ namespace LR
             return false;
         }
         auto token = m_tokenStream.front();
+        auto fn = m_table[m_parseStack.back().sId][token.id];
+        if (fn == nullptr)
+        {
+            std::cout << "[PARSE] ERROR.\n";
+            return false;
+        }
         m_table[m_parseStack.back().sId][token.id]();
         return true;
     }
