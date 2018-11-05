@@ -95,8 +95,9 @@ namespace LR
         m_closure = std::move(nclosure);
     }
 
-    LRParser::LRParser(const Grammar& grammar) :m_grammar(grammar), m_flag(DFA_FLAG::DFA_LR1), m_FFSet(FirstAndFollowSet())
+    LRParser::LRParser(const Grammar& grammar, const DFA_FLAG flag) :m_grammar(grammar), m_flag(flag), m_FFSet(FirstAndFollowSet())
     {
+        // TODO differ from flag
         m_BuildDFA();
         m_BuildTransformTable();
     }
@@ -166,14 +167,24 @@ namespace LR
         }
         ofs << "```\n";
     }
-    LRParser LRParser::DeGenerate()
+    bool LRParser::DeGenerate()
     {
-        if (m_flag == DFA_FLAG::DFA_LR1)
+        if (m_flag == DFA_FLAG::DFA_HIGHER || m_flag == DFA_FLAG::DFA_LR0)
         {
-            LRParser lalr(*this);
-            return lalr;
+            return false;
         }
-        return *this;
+        LRParser rhs(m_grammar, static_cast<DFA_FLAG>(static_cast<int>(m_flag) - 1));
+        if (rhs)
+        {
+            m_flag = static_cast<DFA_FLAG>(static_cast<int>(m_flag) - 1);
+            m_states = std::move(rhs.m_states);
+            m_edges = std::move(rhs.m_edges);
+            m_table = std::move(rhs.m_table);
+            m_tokenStream.clear();
+            m_parseStack.clear();
+            return true;
+        }
+        return false;
     }
     void LRParser::BeginParse(const Utils::TokenStream& ts)
     {

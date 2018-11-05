@@ -142,13 +142,13 @@ namespace LR
     class LRParser
     {
     public:
-        LRParser(const Grammar& grammar);
+        LRParser(const Grammar& grammar, const DFA_FLAG flag = DFA_FLAG::DFA_LR1);
         void Dump();
-        bool Valid()
+        operator bool()
         {
             return m_flag < DFA_FLAG::DFA_HIGHER;
         }
-        LRParser DeGenerate();
+        bool DeGenerate();
         void BeginParse(const Utils::TokenStream& ts);
         bool Step();
     private:

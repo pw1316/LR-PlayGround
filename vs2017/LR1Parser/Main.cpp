@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
         std::cout << "Not valid input string: " << argv[2] << "\n";
         return 2;
     }
-    if (!parser.Valid())
+    if (!parser)
     {
         std::cout << "Not LR(1) language!!!\n";
         return 3;
