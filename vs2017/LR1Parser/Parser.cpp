@@ -201,7 +201,7 @@ namespace LR
         m_parseStack.push_back(ele);
 
         m_tokenStream = ts;
-        if (m_tokenStream.back().id != m_grammar.TERMINAL())
+        if (m_tokenStream.empty() || m_tokenStream.back().id != m_grammar.TERMINAL())
         {
             auto tId = m_grammar.TERMINAL();
             m_tokenStream.emplace_back(tId, m_grammar.GetTokenName(tId));
@@ -498,6 +498,7 @@ namespace LR
         auto &g = m_grammar.G()[gId];
         for (size_t i = 1; i < g.size(); ++i)
         {
+            if (m_grammar.IsEpsilon(g[i])) break;
             m_parseStack.pop_back();
             m_parseStack.pop_back();
         }
